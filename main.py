@@ -14,6 +14,7 @@ from handlers.commandForceMatch import handler_command_forcematch
 from handlers.commandInfo import handler_command_info
 from handlers.commandSettings import handler_command_settings
 from handlers.commandStart import handler_command_start
+from handlers.commandStop import handler_command_stop
 from handlers.error import handler_error
 from utils.oauthClient import get_token_user_queue, GetTokenRequest
 from utils.performMatch import perform_match
@@ -47,6 +48,7 @@ def main():
     )
     updater.dispatcher.add_handler(CommandHandler('info', handler_command_info))
     updater.dispatcher.add_handler(CommandHandler('settings', handler_command_settings))
+    updater.dispatcher.add_handler(CommandHandler('stop', handler_command_stop))
     updater.dispatcher.add_handler(CommandHandler('forcematch', handler_command_forcematch))
     updater.dispatcher.add_handler(CallbackQueryHandler(handler_callback))
     updater.dispatcher.add_error_handler(handler_error)
