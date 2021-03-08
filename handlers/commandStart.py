@@ -3,7 +3,7 @@ from typing import Optional, List
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext, PicklePersistence
 
-from config.constants import TOKEN_REGEXP, USER_DATA_TOKEN_SUCCESS
+from config.constants import TOKEN_REGEXP, USER_DATA_TOKEN_SUCCESS, USER_DATA_TELEGRAM_USERNAME
 from config.env import INTRA_CLIENT_ID, INTRA_REDIRECT_URI
 from utils.oauthClient import check_access_code, TokenUser, Campus, TokenSuccess, GetTokenRequest
 
@@ -75,8 +75,8 @@ def do_auth(update: Update, context: CallbackContext, persistence: PicklePersist
 
 
 def do_greet(update: Update, context: CallbackContext) -> None:
-    greeting = "Привет!\n\nЭто бот неофициального RandomCoffee Школы 21.\n\nДля начала давай познакомимся поближе – " \
-               "пройди аутентификацию через Intra OAuth."
+    greeting = "Привет!\n\nЭто бот неофициального случайного кофе Школы 21.\n\nДля начала давай познакомимся поближе " \
+               "– пройди аутентификацию через Intra OAuth. "
 
     kbd = [
         [
@@ -87,6 +87,7 @@ def do_greet(update: Update, context: CallbackContext) -> None:
         ]
     ]
 
+    context.user_data[USER_DATA_TELEGRAM_USERNAME] = update.effective_chat.username
     context.bot.send_message(chat_id=update.effective_chat.id, text=greeting, reply_markup=InlineKeyboardMarkup(kbd))
 
 
