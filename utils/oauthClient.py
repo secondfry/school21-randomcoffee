@@ -3,10 +3,12 @@ from datetime import datetime
 from typing import TypedDict, Union, List, Any, Optional
 
 import requests
+from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext, PicklePersistence
 
 from config.constants import USER_DATA_LOGIN
 from config.env import INTRA_CLIENT_ID, INTRA_CLIENT_SECRET, INTRA_REDIRECT_URI
+from handlers.commandSettings import settings_choose_campus
 from utils.json_write import json_write
 
 
@@ -232,4 +234,10 @@ def get_token_user_queue(ctx: CallbackContext) -> None:
 
     token_user = get_token_user(token['access_token'])
     persistence.user_data.get(request['id'])[USER_DATA_LOGIN] = token_user['login']
-    ctx.bot.send_message(request['id'], text='Привет, {}'.format(token_user['login']))
+
+    ctx.bot.send_message(
+        request['id'],
+        text='Привет, {}'.format(token_user['login'])
+    )
+
+    settings_choose_campus(ctx, request['id'])
