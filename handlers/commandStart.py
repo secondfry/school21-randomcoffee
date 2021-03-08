@@ -1,7 +1,7 @@
 from typing import Optional, List
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import CallbackContext, PicklePersistence
+from telegram.ext import CallbackContext
 
 from config.constants import TOKEN_REGEXP, USER_DATA_TOKEN_SUCCESS, USER_DATA_TELEGRAM_USERNAME
 from config.env import INTRA_CLIENT_ID, INTRA_REDIRECT_URI
@@ -54,8 +54,7 @@ def enqueue_get_token_user(queue_data: List[GetTokenRequest], id: int, token_suc
     })
 
 
-def do_auth(update: Update, context: CallbackContext, persistence: PicklePersistence,
-            queue_data: List[GetTokenRequest]) -> None:
+def do_auth(update: Update, context: CallbackContext, queue_data: List[GetTokenRequest]) -> None:
     access_code = context.args[0]
 
     token_success = check_access_code(access_code)
@@ -91,9 +90,8 @@ def do_greet(update: Update, context: CallbackContext) -> None:
     context.bot.send_message(chat_id=update.effective_chat.id, text=greeting, reply_markup=InlineKeyboardMarkup(kbd))
 
 
-def handler_command_start(update: Update, context: CallbackContext, persistence: PicklePersistence,
-                          queue_data: List[GetTokenRequest]) -> None:
+def handler_command_start(update: Update, context: CallbackContext, queue_data: List[GetTokenRequest]) -> None:
     if check_if_token(context):
-        return do_auth(update, context, persistence, queue_data)
+        return do_auth(update, context, queue_data)
 
     return do_greet(update, context)

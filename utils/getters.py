@@ -13,3 +13,7 @@ def get_online_status(slug: str) -> str:
         CALLBACK_ONLINE_YES: 'Готов как к онлайну, так и к оффлайну',
         CALLBACK_ONLINE_NO: 'Хочу только оффлайн',
     }.get(slug, '???')
+
+
+def get_accepted() -> str:
+    return 'Подтверджено'

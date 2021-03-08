@@ -3,8 +3,7 @@ from datetime import datetime
 from typing import TypedDict, Union, List, Any, Optional
 
 import requests
-from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import CallbackContext, PicklePersistence
+from telegram.ext import CallbackContext
 
 from config.constants import USER_DATA_LOGIN
 from config.env import INTRA_CLIENT_ID, INTRA_CLIENT_SECRET, INTRA_REDIRECT_URI
@@ -211,15 +210,8 @@ class GetTokenRequest(TypedDict):
     token: TokenSuccess
 
 
-class GetTokenUserQueueContext(TypedDict):
-    queue_data: List[GetTokenRequest]
-    persistence: PicklePersistence
-
-
 def get_token_user_queue(ctx: CallbackContext) -> None:
-    context: GetTokenUserQueueContext = ctx.job.context
-    queue = context['queue_data']
-    persistence = context['persistence']
+    queue: List[GetTokenRequest] = ctx.job.context
 
     if not queue:
         return
@@ -233,7 +225,7 @@ def get_token_user_queue(ctx: CallbackContext) -> None:
         return
 
     token_user = get_token_user(token['access_token'])
-    persistence.user_data.get(request['id'])[USER_DATA_LOGIN] = token_user['login']
+    ctx.dispatcher.user_data[request['id']][USER_DATA_LOGIN] = token_user['login']
 
     ctx.bot.send_message(
         request['id'],

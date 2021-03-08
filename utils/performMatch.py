@@ -1,34 +1,40 @@
 import random
 
-from telegram.ext import CallbackContext, PicklePersistence
+from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+from telegram.ext import CallbackContext
 
 from config.constants import USER_DATA_CAMPUS, USER_DATA_ONLINE, CALLBACK_CAMPUS_KAZAN, CALLBACK_CAMPUS_MOSCOW, \
-    USER_DATA_TELEGRAM_USERNAME, USER_DATA_LOGIN
+    USER_DATA_TELEGRAM_USERNAME, USER_DATA_LOGIN, USER_DATA_ACCEPTED, USER_DATA_MATCHED_WITH
 from config.env import SAVIOUR_ID
 
 
 def send_match_message(ctx: CallbackContext, fromid: int, tologin: str, tohandle: str) -> None:
+    kbd = [
+        [
+            InlineKeyboardButton('Подтвердить встречу', callback_data='match-accept')
+        ]
+    ]
+
     ctx.bot.send_message(
         fromid,
         text='Твой случайный кофе на этой неделе...\nC пиром {} [tg: @{}]!'.format(
             tologin,
             tohandle
-        )
+        ),
+        reply_markup=InlineKeyboardMarkup(kbd)
     )
 
 
-def send_match_messages(ctx: CallbackContext, aid: int, bid: int, alogin: str, blogin: str, ahandle: str,
-                        bhandle: str) -> None:
+def match(ctx: CallbackContext, aid: int, bid: int, alogin: str, blogin: str, ahandle: str, bhandle: str) -> None:
+    ctx.dispatcher.user_data[aid][USER_DATA_ACCEPTED] = False
+    ctx.dispatcher.user_data[aid][USER_DATA_MATCHED_WITH] = bid
+    ctx.dispatcher.user_data[bid][USER_DATA_ACCEPTED] = False
+    ctx.dispatcher.user_data[bid][USER_DATA_MATCHED_WITH] = aid
     send_match_message(ctx, aid, blogin, bhandle)
     send_match_message(ctx, bid, alogin, ahandle)
 
 
-def perform_match_job(ctx: CallbackContext) -> None:
-    persistence: PicklePersistence = ctx.job.context
-    perform_match(ctx, persistence)
-
-
-def perform_match(ctx: CallbackContext, persistence: PicklePersistence) -> None:
+def perform_match(ctx: CallbackContext) -> None:
     buckets = {
         CALLBACK_CAMPUS_KAZAN: [],
         CALLBACK_CAMPUS_MOSCOW: [],
@@ -37,7 +43,7 @@ def perform_match(ctx: CallbackContext, persistence: PicklePersistence) -> None:
     handles = {}
     logins = {}
 
-    for id, person in persistence.user_data.items():
+    for id, person in ctx.dispatcher.user_data.items():
         campus = person.get(USER_DATA_CAMPUS)
         online = person.get(USER_DATA_ONLINE)
 
@@ -57,7 +63,7 @@ def perform_match(ctx: CallbackContext, persistence: PicklePersistence) -> None:
         while len(bucket) > 1:
             a = bucket.pop()
             b = bucket.pop()
-            send_match_messages(ctx, a, b, logins.get(a), logins.get(b), handles.get(a), handles.get(b))
+            match(ctx, a, b, logins.get(a), logins.get(b), handles.get(a), handles.get(b))
 
         if campus != 'online' and bucket:
             last = bucket.pop()
@@ -66,4 +72,4 @@ def perform_match(ctx: CallbackContext, persistence: PicklePersistence) -> None:
         if campus == 'online':
             a = bucket.pop()
             b = SAVIOUR_ID
-            send_match_messages(ctx, a, b, logins.get(a), logins.get(b), handles.get(a), handles.get(b))
+            match(ctx, a, b, logins.get(a), logins.get(b), handles.get(a), handles.get(b))

@@ -16,7 +16,7 @@ from handlers.commandSettings import handler_command_settings
 from handlers.commandStart import handler_command_start
 from handlers.error import handler_error
 from utils.oauthClient import get_token_user_queue, GetTokenRequest
-from utils.performMatch import perform_match_job
+from utils.performMatch import perform_match
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
@@ -30,30 +30,24 @@ def main():
 
     # Initialize queue data and start fetching Intra each 0.5s
     queue_data: List[GetTokenRequest] = []
-    updater.job_queue.run_repeating(get_token_user_queue, interval=0.5, context={
-        'queue_data': queue_data,
-        'persistence': persistence
-    })
+    updater.job_queue.run_repeating(get_token_user_queue, interval=0.5, context=queue_data)
 
     # Initialize matcher
     moment = datetime.now(timezone('Europe/Moscow')).replace(hour=10, minute=0, second=0)
     moment += timedelta(days=(TUESDAY - moment.weekday()) % 7)
     updater.job_queue.run_repeating(
-        perform_match_job,
+        perform_match,
         interval=timedelta(days=7),
-        first=moment,
-        context=persistence
+        first=moment
     )
 
     # Handlers
     updater.dispatcher.add_handler(
-        CommandHandler('start', lambda upd, ctx: handler_command_start(upd, ctx, persistence, queue_data))
+        CommandHandler('start', lambda upd, ctx: handler_command_start(upd, ctx, queue_data))
     )
     updater.dispatcher.add_handler(CommandHandler('info', handler_command_info))
     updater.dispatcher.add_handler(CommandHandler('settings', handler_command_settings))
-    updater.dispatcher.add_handler(
-        CommandHandler('forcematch', lambda upd, ctx: handler_command_forcematch(upd, ctx, persistence))
-    )
+    updater.dispatcher.add_handler(CommandHandler('forcematch', handler_command_forcematch))
     updater.dispatcher.add_handler(CallbackQueryHandler(handler_callback))
     updater.dispatcher.add_error_handler(handler_error)
 
