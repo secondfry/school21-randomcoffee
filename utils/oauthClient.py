@@ -3,7 +3,9 @@ from datetime import datetime
 from typing import TypedDict, Union, List, Any, Optional
 
 import requests
+from telegram.ext import CallbackContext, PicklePersistence
 
+from config.constants import USER_DATA_LOGIN
 from config.env import INTRA_CLIENT_ID, INTRA_CLIENT_SECRET, INTRA_REDIRECT_URI
 from utils.json_write import json_write
 
@@ -200,3 +202,34 @@ def get_token_user(token: str) -> Optional[TokenUser]:
         return data
 
     return None
+
+
+class GetTokenRequest(TypedDict):
+    id: int
+    token: TokenSuccess
+
+
+class GetTokenUserQueueContext(TypedDict):
+    queue_data: List[GetTokenRequest]
+    persistence: PicklePersistence
+
+
+def get_token_user_queue(ctx: CallbackContext) -> None:
+    context: GetTokenUserQueueContext = ctx.job.context
+    queue = context['queue_data']
+    persistence = context['persistence']
+
+    if not queue:
+        return
+
+    request = queue.pop()
+    token = request['token']
+
+    if token['created_at'] + token['expires_in'] < datetime.utcnow().timestamp():
+        ctx.bot.send_message(request['id'], text='Пока мы ожидали ответ Интры мой токен доступа успел протухнуть :('
+                                                 '\n\nПовтори авторизацию, пожалуйста!')
+        return
+
+    token_user = get_token_user(token['access_token'])
+    persistence.user_data.get(request['id'])[USER_DATA_LOGIN] = token_user['login']
+    ctx.bot.send_message(request['id'], text='Привет, {}'.format(token_user['login']))
