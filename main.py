@@ -7,7 +7,7 @@ from typing import List
 from pytz import timezone
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, PicklePersistence
 
-from config.constants import TUESDAY
+from config.constants import WEEKDAY_TUESDAY, WEEKDAY_WEDNESDAY
 from config.env import TELEGRAM_TOKEN
 from handlers.callback import handler_callback
 from handlers.commandForceMatch import handler_command_forcematch
@@ -18,6 +18,7 @@ from handlers.commandStop import handler_command_stop
 from handlers.error import handler_error
 from utils.oauthClient import get_token_user_queue, GetTokenRequest
 from utils.performMatch import perform_match
+from utils.performRematch import perform_rematch
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
@@ -35,9 +36,18 @@ def main():
 
     # Initialize matcher
     moment = datetime.now(timezone('Europe/Moscow')).replace(hour=10, minute=0, second=0)
-    moment += timedelta(days=(TUESDAY - moment.weekday()) % 7)
+    moment += timedelta(days=(WEEKDAY_TUESDAY - moment.weekday()) % 7)
     updater.job_queue.run_repeating(
         perform_match,
+        interval=timedelta(days=7),
+        first=moment
+    )
+
+    # Initialize re-matcher
+    moment = datetime.now(timezone('Europe/Moscow')).replace(hour=10, minute=0, second=0)
+    moment += timedelta(days=(WEEKDAY_WEDNESDAY - moment.weekday()) % 7)
+    updater.job_queue.run_repeating(
+        perform_rematch,
         interval=timedelta(days=7),
         first=moment
     )

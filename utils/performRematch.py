@@ -1,41 +1,15 @@
 import random
 
-from telegram import InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import CallbackContext
 
 from config.constants import USER_DATA_CAMPUS, USER_DATA_ONLINE, CALLBACK_CAMPUS_KAZAN, CALLBACK_CAMPUS_MOSCOW, \
     USER_DATA_TELEGRAM_USERNAME, USER_DATA_LOGIN, USER_DATA_ACCEPTED, USER_DATA_MATCHED_WITH, USER_DATA_ACTIVE, \
     CALLBACK_ACTIVE_NO
 from config.env import SAVIOUR_ID
+from utils.performMatch import match
 
 
-def send_match_message(ctx: CallbackContext, fromid: int, tologin: str, tohandle: str) -> None:
-    kbd = [
-        [
-            InlineKeyboardButton('Подтвердить встречу', callback_data='match-accept')
-        ]
-    ]
-
-    ctx.bot.send_message(
-        fromid,
-        text='Твой случайный кофе на этой неделе...\nC пиром {} [tg: @{}]!'.format(
-            tologin,
-            tohandle
-        ),
-        reply_markup=InlineKeyboardMarkup(kbd)
-    )
-
-
-def match(ctx: CallbackContext, aid: int, bid: int, alogin: str, blogin: str, ahandle: str, bhandle: str) -> None:
-    ctx.dispatcher.user_data[aid][USER_DATA_ACCEPTED] = False
-    ctx.dispatcher.user_data[aid][USER_DATA_MATCHED_WITH] = bid
-    ctx.dispatcher.user_data[bid][USER_DATA_ACCEPTED] = False
-    ctx.dispatcher.user_data[bid][USER_DATA_MATCHED_WITH] = aid
-    send_match_message(ctx, aid, blogin, bhandle)
-    send_match_message(ctx, bid, alogin, ahandle)
-
-
-def perform_match(ctx: CallbackContext) -> None:
+def perform_rematch(ctx: CallbackContext) -> None:
     buckets = {
         CALLBACK_CAMPUS_KAZAN: [],
         CALLBACK_CAMPUS_MOSCOW: [],
@@ -49,6 +23,21 @@ def perform_match(ctx: CallbackContext) -> None:
         if active == CALLBACK_ACTIVE_NO:
             continue
 
+        accepted = person.get(USER_DATA_ACCEPTED)
+        if not accepted:
+            person[USER_DATA_ACTIVE] = CALLBACK_ACTIVE_NO
+
+    for id, person in ctx.dispatcher.user_data.items():
+        accepted = person.get(USER_DATA_ACCEPTED)
+        peer = person.get(USER_DATA_MATCHED_WITH)
+        peer_active = ctx.dispatcher.user_data[peer][USER_DATA_ACTIVE]
+
+        if not accepted or peer_active:
+            continue
+
+        ctx.bot.send_message(id, text='К сожалению, твой пир на случайный кофе не подтвердил встречу... Ищем нового!')
+
+        # FIXME lower code duplication
         campus = person.get(USER_DATA_CAMPUS)
         online = person.get(USER_DATA_ONLINE)
 
@@ -63,6 +52,7 @@ def perform_match(ctx: CallbackContext) -> None:
         else:
             buckets[campus].append(id)
 
+    # FIXME lower code duplication
     for campus, bucket in buckets.items():
         random.shuffle(bucket)
         while len(bucket) > 1:
