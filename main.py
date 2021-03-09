@@ -11,6 +11,7 @@ from config.constants import WEEKDAY_TUESDAY, WEEKDAY_WEDNESDAY
 from config.env import TELEGRAM_TOKEN
 from handlers.callback import handler_callback
 from handlers.commandForceMatch import handler_command_forcematch
+from handlers.commandForceRematch import handler_command_forcerematch
 from handlers.commandInfo import handler_command_info
 from handlers.commandSettings import handler_command_settings
 from handlers.commandStart import handler_command_start
@@ -60,6 +61,7 @@ def main():
     updater.dispatcher.add_handler(CommandHandler('settings', handler_command_settings))
     updater.dispatcher.add_handler(CommandHandler('stop', handler_command_stop))
     updater.dispatcher.add_handler(CommandHandler('forcematch', handler_command_forcematch))
+    updater.dispatcher.add_handler(CommandHandler('forcerematch', handler_command_forcerematch))
     updater.dispatcher.add_handler(CallbackQueryHandler(handler_callback))
     updater.dispatcher.add_error_handler(handler_error)
 
