@@ -2,7 +2,7 @@ from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import CallbackContext
 
 from config.constants import USER_DATA_CAMPUS, USER_DATA_ONLINE, CALLBACK_ACTION_SETTING, CALLBACK_ACTION_MATCH, \
-    USER_DATA_ACCEPTED, USER_DATA_MATCHED_WITH, USER_DATA_ACTIVE
+    USER_DATA_ACCEPTED, USER_DATA_MATCHED_WITH, USER_DATA_ACTIVE, USER_DATA_LOGIN
 from handlers.commandSettings import settings_choose_online, settings_finish, settings_choose_active
 from utils.getters import get_campus_name, get_online_status, get_accepted, get_active_status
 from utils.pair import check_pair, notify_pair
@@ -46,6 +46,9 @@ def set_accepted(update: Update, context: CallbackContext):
 
 
 def handler_callback(update: Update, context: CallbackContext) -> None:
+    if not context.user_data.get(USER_DATA_LOGIN):
+        return
+
     query = update.callback_query
     query.answer()
 

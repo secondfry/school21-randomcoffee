@@ -5,6 +5,9 @@ from config.constants import USER_DATA_LOGIN, USER_DATA_CAMPUS, USER_DATA_ONLINE
 
 
 def handler_command_info(update: Update, context: CallbackContext) -> None:
+    if not context.user_data.get(USER_DATA_LOGIN):
+        return
+
     data = 'intra: {}\ntelegram: @{}\ncampus: {}\nonline: {}'.format(
         context.user_data.get(USER_DATA_LOGIN),
         context.user_data.get(USER_DATA_TELEGRAM_USERNAME),

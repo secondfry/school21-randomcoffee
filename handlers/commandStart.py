@@ -3,7 +3,7 @@ from typing import Optional, List
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
 
-from config.constants import TOKEN_REGEXP, USER_DATA_TOKEN_SUCCESS, USER_DATA_TELEGRAM_USERNAME
+from config.constants import TOKEN_REGEXP, USER_DATA_TOKEN_SUCCESS, USER_DATA_TELEGRAM_USERNAME, USER_DATA_LOGIN
 from config.env import INTRA_CLIENT_ID, INTRA_REDIRECT_URI
 from utils.oauthClient import check_access_code, TokenUser, Campus, TokenSuccess, GetTokenRequest
 
@@ -91,6 +91,9 @@ def do_greet(update: Update, context: CallbackContext) -> None:
 
 
 def handler_command_start(update: Update, context: CallbackContext, queue_data: List[GetTokenRequest]) -> None:
+    if context.user_data.get(USER_DATA_LOGIN):
+        return
+
     if check_if_token(context):
         return do_auth(update, context, queue_data)
 
