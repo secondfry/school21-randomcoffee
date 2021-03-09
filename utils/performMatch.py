@@ -1,3 +1,4 @@
+import logging
 import random
 
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton
@@ -5,7 +6,7 @@ from telegram.ext import CallbackContext
 
 from config.constants import USER_DATA_CAMPUS, USER_DATA_ONLINE, CALLBACK_CAMPUS_KAZAN, CALLBACK_CAMPUS_MOSCOW, \
     USER_DATA_TELEGRAM_USERNAME, USER_DATA_LOGIN, USER_DATA_ACCEPTED, USER_DATA_MATCHED_WITH, USER_DATA_ACTIVE, \
-    CALLBACK_ACTIVE_NO
+    CALLBACK_ACTIVE_NO, CALLBACK_ONLINE_NO
 from config.env import SAVIOUR_ID
 
 
@@ -39,23 +40,24 @@ def perform_match(ctx: CallbackContext) -> None:
     buckets = {
         CALLBACK_CAMPUS_KAZAN: [],
         CALLBACK_CAMPUS_MOSCOW: [],
-        'online': []
+        'online': [],
+        '???': []
     }
     handles = {}
     logins = {}
 
     for id, person in ctx.dispatcher.user_data.items():
-        active = person.get(USER_DATA_ACTIVE)
+        active = person.get(USER_DATA_ACTIVE, CALLBACK_ACTIVE_NO)
         if active == CALLBACK_ACTIVE_NO:
             continue
 
-        campus = person.get(USER_DATA_CAMPUS)
-        online = person.get(USER_DATA_ONLINE)
+        campus = person.get(USER_DATA_CAMPUS, '???')
+        online = person.get(USER_DATA_ONLINE, CALLBACK_ONLINE_NO)
 
-        handle = person.get(USER_DATA_TELEGRAM_USERNAME)
+        handle = person.get(USER_DATA_TELEGRAM_USERNAME, '???')
         handles[id] = handle
 
-        login = person.get(USER_DATA_LOGIN)
+        login = person.get(USER_DATA_LOGIN, '???')
         logins[id] = login
 
         if online:
@@ -64,6 +66,11 @@ def perform_match(ctx: CallbackContext) -> None:
             buckets[campus].append(id)
 
     for campus, bucket in buckets.items():
+        if campus == '???':
+            if bucket:
+                logging.error('For some reason ??? bucket has #{} accounts in it'.format(len(bucket)))
+            continue
+
         random.shuffle(bucket)
         while len(bucket) > 1:
             a = bucket.pop()
