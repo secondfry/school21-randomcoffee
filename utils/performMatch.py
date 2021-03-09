@@ -81,7 +81,7 @@ def perform_match(ctx: CallbackContext) -> None:
             last = bucket.pop()
             buckets['online'].append(last)
 
-        if campus == 'online':
+        if campus == 'online' and bucket:
             a = bucket.pop()
             b = SAVIOUR_ID
             match(ctx, a, b, logins.get(a), logins.get(b), handles.get(a), handles.get(b))
