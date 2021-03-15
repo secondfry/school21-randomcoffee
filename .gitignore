@@ -453,4 +453,4 @@ ASALocalRun/
 *.binlog
 
 ###Personal###
-store.pickle
+*.pickle
