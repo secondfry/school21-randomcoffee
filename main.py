@@ -10,6 +10,7 @@ from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, PicklePe
 from config.constants import WEEKDAY_TUESDAY, WEEKDAY_WEDNESDAY
 from config.env import TELEGRAM_TOKEN
 from handlers.callback import handler_callback
+from handlers.commandDump import handler_command_dump
 from handlers.commandForceMatch import handler_command_forcematch
 from handlers.commandForceRematch import handler_command_forcerematch
 from handlers.commandInfo import handler_command_info
@@ -62,6 +63,7 @@ def main():
     updater.dispatcher.add_handler(CommandHandler('stop', handler_command_stop))
     updater.dispatcher.add_handler(CommandHandler('forcematch', handler_command_forcematch))
     updater.dispatcher.add_handler(CommandHandler('forcerematch', handler_command_forcerematch))
+    updater.dispatcher.add_handler(CommandHandler('dump', handler_command_dump))
     updater.dispatcher.add_handler(CallbackQueryHandler(handler_callback))
     updater.dispatcher.add_error_handler(handler_error)
 
