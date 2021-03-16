@@ -8,6 +8,7 @@ from config.constants import (
     USER_DATA_V1_SETTINGS_ACTIVE,
     CALLBACK_ACTIVE_NO,
     USER_DATA_V1_MATCH_ACCEPTED,
+    USER_DATA_V1_SETTINGS_CAMPUS,
 )
 from config.env import ADMIN_IDS
 from utils.getters import get_bucket, get_accepted_sign
@@ -30,22 +31,25 @@ def handler_command_dump(upd: Update, ctx: CallbackContext) -> None:
     data_inactive = []
 
     for aid, adata in ctx.dispatcher.user_data.items():
-        if USER_DATA_V1_AUTHORIZED not in adata or not adata[USER_DATA_V1_AUTHORIZED]:
+        if not adata.get(USER_DATA_V1_AUTHORIZED, False):
             continue
 
         abucket = get_bucket(adata)
+        acampus = adata.get(USER_DATA_V1_SETTINGS_CAMPUS, '???')
+        if abucket != acampus:
+            abucket = '{}{}'.format(abucket[0:3], acampus[0:3])
         alogin = adata.get(USER_DATA_V1_INTRA_LOGIN, 'unset')
 
-        if USER_DATA_V1_SETTINGS_ACTIVE not in adata or adata[USER_DATA_V1_SETTINGS_ACTIVE] == CALLBACK_ACTIVE_NO:
-            message = '[{:>9}] {:>10}'.format(
+        if adata.get(USER_DATA_V1_SETTINGS_ACTIVE, CALLBACK_ACTIVE_NO) == CALLBACK_ACTIVE_NO:
+            message = '[{:<6}] {:<8}'.format(
                 abucket,
                 alogin,
             )
             data_inactive.append(message)
             continue
 
-        if USER_DATA_V1_MATCH_WITH not in adata or not adata[USER_DATA_V1_MATCH_WITH]:
-            message = '[{:>9}] {:>10}'.format(
+        if not adata.get(USER_DATA_V1_MATCH_WITH, None):
+            message = '[{:<6}] {:<8}'.format(
                 abucket,
                 alogin,
             )
@@ -55,10 +59,13 @@ def handler_command_dump(upd: Update, ctx: CallbackContext) -> None:
         bid = adata[USER_DATA_V1_MATCH_WITH]
         bdata = ctx.dispatcher.user_data[bid]
         bbucket = get_bucket(bdata)
+        bcampus = bdata.get(USER_DATA_V1_SETTINGS_CAMPUS, '???')
+        if bbucket != bcampus:
+            bbucket = '{}{}'.format(bbucket[0:3], bcampus[0:3])
         blogin = bdata.get(USER_DATA_V1_INTRA_LOGIN, 'unset')
         asign = get_accepted_sign(adata)
         bsign = get_accepted_sign(bdata)
-        message = '[{}][{:>9}] {:>10} - [{}][{:>9}] {:>10}'.format(
+        message = '[{1:<6}] {2:<8} {0}|{3} {5:<8} [{4:<6}]'.format(
             asign,
             abucket,
             alogin,
@@ -67,7 +74,7 @@ def handler_command_dump(upd: Update, ctx: CallbackContext) -> None:
             blogin,
         )
 
-        if abucket != bbucket:
+        if abucket[0:3] != bbucket[0:3]:
             data_nok.append(message)
         else:
             if asign != bsign or asign == bsign == get_accepted_sign({USER_DATA_V1_MATCH_ACCEPTED: False}):
@@ -91,6 +98,6 @@ def handler_command_dump(upd: Update, ctx: CallbackContext) -> None:
         if not lst:
             continue
         ctx.bot.send_message(upd.effective_user.id, text=name)
-        for chunk in chunks(lst, 25):
+        for chunk in chunks(lst, 30):
             message = '```\n{}\n```'.format('\n'.join(chunk))
             ctx.bot.send_message(upd.effective_user.id, text=message, parse_mode=ParseMode.MARKDOWN)

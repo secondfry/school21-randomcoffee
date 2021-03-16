@@ -44,7 +44,7 @@ def get_accepted_sign(data: Dict[str, Any]) -> str:
     return {
         True: '+',
         False: '-'
-    }.get(data[USER_DATA_V1_MATCH_ACCEPTED], '?')
+    }.get(data.get(USER_DATA_V1_MATCH_ACCEPTED, None), '?')
 
 
 def get_primary_campus(data: TokenUser) -> Optional[str]:
