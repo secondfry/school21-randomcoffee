@@ -20,18 +20,17 @@ from config.constants import (
 )
 from config.env import ADMIN_IDS
 from utils.getters import get_bucket
-from utils.performMatch import match
+from utils.performMatch import match, find_peer_from_campus
 
 
 def perform_rematch(ctx: CallbackContext) -> None:
-    buckets: Dict[str, Deque] = {
+    buckets: Dict[str, Deque[int]] = {
         CALLBACK_CAMPUS_KAZAN: deque(),
         CALLBACK_CAMPUS_MOSCOW: deque(),
         'online': deque(),
         '???': deque(),
     }
     user_campuses = {}
-    user_buckets = {}
     user_handles = {}
     user_logins = {}
 
@@ -93,7 +92,6 @@ def perform_rematch(ctx: CallbackContext) -> None:
         udata[USER_DATA_V1_MATCH_ACCEPTED] = False
 
         bucket = get_bucket(udata)
-        user_buckets[uid] = bucket
 
         handle = udata.get(USER_DATA_V1_TELEGRAM_USERNAME, '???')
         user_handles[uid] = handle
@@ -120,42 +118,20 @@ def perform_rematch(ctx: CallbackContext) -> None:
 
         while len(uids) > 1:
             a = uids.pop()
-            abucket = user_buckets[a]
-            acampus = user_campuses[a]
             b = uids.pop()
-            bbucket = user_buckets[a]
-            bcampus = user_campuses[b]
-
-            if (abucket != acampus or bbucket != bcampus) and \
-                    abucket != 'online' and \
-                    abucket != 'online' and \
-                    acampus != bcampus:
-                tmp = [b]
-
-                while acampus != bcampus and uids:
-                    c = uids.pop()
-                    ccampus = user_campuses[c]
-
-                    if acampus != ccampus:
-                        tmp.append(c)
-                    else:
-                        uids.extendleft(tmp)
-                        tmp.clear()
-                        b = c
-                        bcampus = ccampus
-
-                if tmp:
-                    uids.extendleft(tmp)
-                    tmp.clear()
-
             match(ctx, a, b, user_logins.get(a), user_logins.get(b), user_handles.get(a), user_handles.get(b))
 
         if not uids:
             continue
 
         if bucket != 'online':
-            last = uids.pop()
-            buckets['online'].appendleft(last)
+            a = uids.pop()
+            b = find_peer_from_campus(buckets['online'], user_campuses, user_campuses[a])
+
+            if not b:
+                continue
+
+            match(ctx, a, b, user_logins.get(a), user_logins.get(b), user_handles.get(a), user_handles.get(b))
 
         # TODO reimplement saviour mechanic
         # if bucket == 'online':
@@ -165,6 +141,5 @@ def perform_rematch(ctx: CallbackContext) -> None:
 
     buckets.clear()
     user_campuses.clear()
-    user_buckets.clear()
     user_handles.clear()
     user_logins.clear()
