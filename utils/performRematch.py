@@ -30,23 +30,15 @@ def perform_rematch(ctx: CallbackContext) -> None:
     logins = {}
 
     for uid, udata in ctx.dispatcher.user_data.items():
-        if USER_DATA_V1_AUTHORIZED not in udata:
+        if not udata.get(USER_DATA_V1_AUTHORIZED, False):
             udata[USER_DATA_V1_AUTHORIZED] = False
             continue
 
-        if not udata[USER_DATA_V1_AUTHORIZED]:
-            continue
-
-        if USER_DATA_V1_SETTINGS_ACTIVE not in udata:
+        if udata.get(USER_DATA_V1_SETTINGS_ACTIVE, CALLBACK_ACTIVE_NO) != CALLBACK_ACTIVE_YES:
             udata[USER_DATA_V1_SETTINGS_ACTIVE] = CALLBACK_ACTIVE_NO
             continue
 
-        if udata[USER_DATA_V1_SETTINGS_ACTIVE] != CALLBACK_ACTIVE_YES:
-            continue
-
-        if USER_DATA_V1_MATCH_WITH in udata and \
-                udata[USER_DATA_V1_MATCH_WITH] and \
-                not udata[USER_DATA_V1_MATCH_ACCEPTED]:
+        if udata.get(USER_DATA_V1_MATCH_WITH, None) and not udata[USER_DATA_V1_MATCH_ACCEPTED]:
             bid = udata[USER_DATA_V1_MATCH_WITH]
             bdata = ctx.dispatcher.user_data.get(bid, {})
             if bdata is not None and bdata.get(USER_DATA_V1_MATCH_ACCEPTED, False):
@@ -60,21 +52,15 @@ def perform_rematch(ctx: CallbackContext) -> None:
             udata[USER_DATA_V1_MATCH_WITH] = None
 
     for uid, udata in ctx.dispatcher.user_data.items():
-        if USER_DATA_V1_AUTHORIZED not in udata:
+        if not udata.get(USER_DATA_V1_AUTHORIZED, False):
             udata[USER_DATA_V1_AUTHORIZED] = False
             continue
 
-        if not udata[USER_DATA_V1_AUTHORIZED]:
-            continue
-
-        if USER_DATA_V1_SETTINGS_ACTIVE not in udata:
+        if udata.get(USER_DATA_V1_SETTINGS_ACTIVE, CALLBACK_ACTIVE_NO) != CALLBACK_ACTIVE_YES:
             udata[USER_DATA_V1_SETTINGS_ACTIVE] = CALLBACK_ACTIVE_NO
             continue
 
-        if udata[USER_DATA_V1_SETTINGS_ACTIVE] != CALLBACK_ACTIVE_YES:
-            continue
-
-        if USER_DATA_V1_MATCH_WITH in udata and udata[USER_DATA_V1_MATCH_WITH]:
+        if udata.get(USER_DATA_V1_MATCH_WITH, None):
             continue
 
         bucket = get_bucket(udata)

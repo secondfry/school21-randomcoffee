@@ -57,18 +57,15 @@ def perform_match(ctx: CallbackContext) -> None:
         udata[USER_DATA_V1_MATCH_ACCEPTED] = False
         udata[USER_DATA_V1_MATCH_WITH] = None
 
-        if USER_DATA_V1_AUTHORIZED not in udata:
+        if not udata.get(USER_DATA_V1_AUTHORIZED, False):
             udata[USER_DATA_V1_AUTHORIZED] = False
             continue
 
-        if not udata[USER_DATA_V1_AUTHORIZED]:
-            continue
-
-        if USER_DATA_V1_SETTINGS_ACTIVE not in udata:
+        if udata.get(USER_DATA_V1_SETTINGS_ACTIVE, CALLBACK_ACTIVE_NO) != CALLBACK_ACTIVE_YES:
             udata[USER_DATA_V1_SETTINGS_ACTIVE] = CALLBACK_ACTIVE_NO
-            continue
-
-        if udata[USER_DATA_V1_SETTINGS_ACTIVE] != CALLBACK_ACTIVE_YES:
+            ctx.bot.send_message(uid, text='На этой неделе ты выбрал не идти на случайный кофе.\n'
+                                           'Если передумаешь и изменишь настройки, '
+                                           'то завтра тебе должно будет подобрать пару.')
             continue
 
         bucket = get_bucket(udata)
