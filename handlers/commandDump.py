@@ -7,9 +7,10 @@ from config.constants import (
     USER_DATA_V1_AUTHORIZED,
     USER_DATA_V1_SETTINGS_ACTIVE,
     CALLBACK_ACTIVE_NO,
+    USER_DATA_V1_MATCH_ACCEPTED,
 )
 from config.env import ADMIN_IDS
-from utils.getters import get_bucket
+from utils.getters import get_bucket, get_accepted_sign
 
 
 def chunks(lst, n):
@@ -22,6 +23,7 @@ def handler_command_dump(upd: Update, ctx: CallbackContext) -> None:
     if upd.effective_user.id not in ADMIN_IDS:
         return
 
+    data_perfect = []
     data_ok = []
     data_nok = []
     data_notmatched = []
@@ -54,9 +56,13 @@ def handler_command_dump(upd: Update, ctx: CallbackContext) -> None:
         bdata = ctx.dispatcher.user_data[bid]
         bbucket = get_bucket(bdata)
         blogin = bdata.get(USER_DATA_V1_INTRA_LOGIN, 'unset')
-        message = '[{:>9}] {:>10} - [{:>9}] {:>10}'.format(
+        asign = get_accepted_sign(adata)
+        bsign = get_accepted_sign(bdata)
+        message = '[{}][{:>9}] {:>10} - [{}][{:>9}] {:>10}'.format(
+            asign,
             abucket,
             alogin,
+            bsign,
             bbucket,
             blogin,
         )
@@ -64,14 +70,19 @@ def handler_command_dump(upd: Update, ctx: CallbackContext) -> None:
         if abucket != bbucket:
             data_nok.append(message)
         else:
-            data_ok.append(message)
+            if asign != bsign or asign == bsign == get_accepted_sign({USER_DATA_V1_MATCH_ACCEPTED: False}):
+                data_ok.append(message)
+            else:
+                data_perfect.append(message)
 
+    data_perfect.sort()
     data_ok.sort()
     data_nok.sort()
     data_notmatched.sort()
     data_inactive.sort()
 
     for (name, lst) in [
+        ('Отличные пары', data_perfect),
         ('Хорошие пары', data_ok),
         ('Плохие пары', data_nok),
         ('Еще не успели сматчиться', data_notmatched),

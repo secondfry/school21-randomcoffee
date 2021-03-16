@@ -10,6 +10,7 @@ from config.constants import (
     USER_DATA_V1_SETTINGS_ONLINE,
     USER_DATA_V1_SETTINGS_CAMPUS,
     USER_DATA_V1_INTRA_CAMPUS,
+    USER_DATA_V1_MATCH_ACCEPTED,
 )
 from typings import TokenUser
 
@@ -37,6 +38,13 @@ def get_active_status(slug: str) -> str:
 
 def get_accepted() -> str:
     return 'Подтверджено'
+
+
+def get_accepted_sign(data: Dict[str, Any]) -> str:
+    return {
+        True: '+',
+        False: '-'
+    }.get(data[USER_DATA_V1_MATCH_ACCEPTED], '?')
 
 
 def get_primary_campus(data: TokenUser) -> Optional[str]:
