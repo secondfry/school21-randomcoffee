@@ -24,6 +24,7 @@ def handler_command_dump(upd: Update, ctx: CallbackContext) -> None:
 
     data_ok = []
     data_nok = []
+    data_inactive = []
 
     for aid, adata in ctx.dispatcher.user_data.items():
         if USER_DATA_V1_AUTHORIZED not in adata or not adata[USER_DATA_V1_AUTHORIZED]:
@@ -32,18 +33,26 @@ def handler_command_dump(upd: Update, ctx: CallbackContext) -> None:
         if USER_DATA_V1_MATCH_WITH not in adata:
             continue
 
+        abucket = get_bucket(adata)
+        alogin = adata.get(USER_DATA_V1_INTRA_LOGIN, 'unset')
+
         if USER_DATA_V1_SETTINGS_ACTIVE not in adata or adata[USER_DATA_V1_SETTINGS_ACTIVE] == CALLBACK_ACTIVE_NO:
+            message = '[{:>9}] {:>10}'.format(
+                abucket,
+                alogin,
+            )
+            data_inactive.append(message)
             continue
 
         bid = adata[USER_DATA_V1_MATCH_WITH]
         bdata = ctx.dispatcher.user_data[bid]
-        abucket = get_bucket(adata)
         bbucket = get_bucket(bdata)
+        blogin = bdata.get(USER_DATA_V1_INTRA_LOGIN, 'unset')
         message = '[{:>9}] {:>10} - [{:>9}] {:>10}'.format(
             abucket,
-            adata.get(USER_DATA_V1_INTRA_LOGIN, 'unset'),
+            alogin,
             bbucket,
-            bdata.get(USER_DATA_V1_INTRA_LOGIN, 'unset'),
+            blogin,
         )
 
         if abucket != bbucket:
@@ -53,8 +62,12 @@ def handler_command_dump(upd: Update, ctx: CallbackContext) -> None:
 
     data_ok.sort()
     data_nok.sort()
+    data_inactive.sort()
 
-    for lst in [data_ok, data_nok]:
+    for (name, lst) in [('Хорошие пары', data_ok), ('Плохие пары', data_nok), ('Инактив', data_inactive)]:
+        if not lst:
+            continue
+        ctx.bot.send_message(upd.effective_user.id, text=name)
         for chunk in chunks(lst, 25):
             message = '```\n{}\n```'.format('\n'.join(chunk))
             ctx.bot.send_message(upd.effective_user.id, text=message, parse_mode=ParseMode.MARKDOWN)
