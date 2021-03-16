@@ -24,13 +24,11 @@ def handler_command_dump(upd: Update, ctx: CallbackContext) -> None:
 
     data_ok = []
     data_nok = []
+    data_notmatched = []
     data_inactive = []
 
     for aid, adata in ctx.dispatcher.user_data.items():
         if USER_DATA_V1_AUTHORIZED not in adata or not adata[USER_DATA_V1_AUTHORIZED]:
-            continue
-
-        if USER_DATA_V1_MATCH_WITH not in adata:
             continue
 
         abucket = get_bucket(adata)
@@ -42,6 +40,14 @@ def handler_command_dump(upd: Update, ctx: CallbackContext) -> None:
                 alogin,
             )
             data_inactive.append(message)
+            continue
+
+        if USER_DATA_V1_MATCH_WITH not in adata or not adata[USER_DATA_V1_MATCH_WITH]:
+            message = '[{:>9}] {:>10}'.format(
+                abucket,
+                alogin,
+            )
+            data_notmatched.append(message)
             continue
 
         bid = adata[USER_DATA_V1_MATCH_WITH]
@@ -62,9 +68,15 @@ def handler_command_dump(upd: Update, ctx: CallbackContext) -> None:
 
     data_ok.sort()
     data_nok.sort()
+    data_notmatched.sort()
     data_inactive.sort()
 
-    for (name, lst) in [('Хорошие пары', data_ok), ('Плохие пары', data_nok), ('Инактив', data_inactive)]:
+    for (name, lst) in [
+        ('Хорошие пары', data_ok),
+        ('Плохие пары', data_nok),
+        ('Еще не успели сматчиться', data_notmatched),
+        ('Инактив', data_inactive)
+    ]:
         if not lst:
             continue
         ctx.bot.send_message(upd.effective_user.id, text=name)
