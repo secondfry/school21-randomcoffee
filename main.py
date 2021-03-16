@@ -18,6 +18,7 @@ from handlers.commandSettings import handler_command_settings
 from handlers.commandStart import handler_command_start
 from handlers.commandStop import handler_command_stop
 from handlers.error import handler_error
+from utils.migrate import migrate
 from utils.oauthClient import get_token_user_queue, GetTokenRequest
 from utils.performMatch import perform_match
 from utils.performRematch import perform_rematch
@@ -31,6 +32,9 @@ def main():
 
     # Create Updater
     updater = Updater(TELEGRAM_TOKEN, persistence=persistence, use_context=True)
+
+    # Migrate if needed
+    migrate(updater.dispatcher.user_data)
 
     # Initialize queue data and start fetching Intra each 0.5s
     queue_data: List[GetTokenRequest] = []

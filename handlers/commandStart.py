@@ -1,11 +1,18 @@
-from typing import Optional, List
+from typing import List
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
 
-from config.constants import TOKEN_REGEXP, USER_DATA_TOKEN_SUCCESS, USER_DATA_TELEGRAM_USERNAME, USER_DATA_LOGIN
+from config.constants import (
+    TOKEN_REGEXP,
+    USER_DATA_V1_TELEGRAM_USERNAME,
+    USER_DATA_V1_AUTHORIZED,
+    USER_DATA_V1_INTRA_TOKEN,
+)
 from config.env import INTRA_CLIENT_ID, INTRA_REDIRECT_URI
-from utils.oauthClient import check_access_code, TokenUser, Campus, TokenSuccess, GetTokenRequest
+from typings import GetTokenRequest, Token
+from utils.lang import COMMAND_START_NOT_AUTHORIZED, COMMAND_DENIED_AUTHORIZED
+from utils.oauthClient import check_access_code
 
 
 def get_oauth_endpoint() -> str:
@@ -13,6 +20,10 @@ def get_oauth_endpoint() -> str:
         INTRA_CLIENT_ID,
         INTRA_REDIRECT_URI
     )
+
+
+def do_reject(upd: Update, ctx: CallbackContext) -> None:
+    ctx.bot.send_message(upd.effective_user.id, text=COMMAND_DENIED_AUTHORIZED)
 
 
 def check_if_token(context: CallbackContext) -> bool:
@@ -27,56 +38,33 @@ def check_if_token(context: CallbackContext) -> bool:
     return True
 
 
-def get_primary_campus(data: TokenUser) -> Optional[Campus]:
-    if not data['campus']:
-        return None
-
-    id: Optional[int] = None
-
-    for campus_user in data['campus_users']:
-        if campus_user['is_primary']:
-            id = campus_user['campus_id']
-
-    if not id:
-        return None
-
-    for campus in data['campus']:
-        if campus['id'] == id:
-            return campus
-
-    return None
-
-
-def enqueue_get_token_user(queue_data: List[GetTokenRequest], id: int, token_success: TokenSuccess):
+def enqueue_get_token_user(queue_data: List[GetTokenRequest], id: int, token_success: Token):
     queue_data.append({
         'id': id,
         'token': token_success
     })
 
 
-def do_auth(update: Update, context: CallbackContext, queue_data: List[GetTokenRequest]) -> None:
-    access_code = context.args[0]
+def do_auth(upd: Update, ctx: CallbackContext, queue_data: List[GetTokenRequest]) -> None:
+    code = ctx.args[0]
 
-    token_success = check_access_code(access_code)
-    if not token_success:
-        context.bot.send_message(
-            chat_id=update.effective_chat.id,
+    token = check_access_code(code)
+    if not token:
+        ctx.bot.send_message(
+            chat_id=upd.effective_chat.id,
             text='Твой код – не код (либо интра лежит, тогда попробуй позднее).'
         )
         return
 
-    context.user_data[USER_DATA_TOKEN_SUCCESS] = token_success
-    enqueue_get_token_user(queue_data, update.effective_user.id, token_success)
-    context.bot.send_message(
-        chat_id=update.effective_chat.id,
+    ctx.user_data[USER_DATA_V1_INTRA_TOKEN] = token
+    enqueue_get_token_user(queue_data, upd.effective_user.id, token)
+    ctx.bot.send_message(
+        chat_id=upd.effective_chat.id,
         text='Ожидаю ответ Интры...'
     )
 
 
-def do_greet(update: Update, context: CallbackContext) -> None:
-    greeting = "Привет!\n\nЭто бот неофициального случайного кофе Школы 21.\n\nДля начала давай познакомимся поближе " \
-               "– пройди аутентификацию через Intra OAuth. "
-
+def do_greet(upd: Update, ctx: CallbackContext) -> None:
     kbd = [
         [
             InlineKeyboardButton(
@@ -86,15 +74,21 @@ def do_greet(update: Update, context: CallbackContext) -> None:
         ]
     ]
 
-    context.user_data[USER_DATA_TELEGRAM_USERNAME] = update.effective_chat.username
-    context.bot.send_message(chat_id=update.effective_chat.id, text=greeting, reply_markup=InlineKeyboardMarkup(kbd))
+    ctx.user_data[USER_DATA_V1_AUTHORIZED] = False
+    username = upd.effective_chat.username
+    ctx.user_data[USER_DATA_V1_TELEGRAM_USERNAME] = username if username else '???'
+    ctx.bot.send_message(
+        chat_id=upd.effective_chat.id,
+        text=COMMAND_START_NOT_AUTHORIZED,
+        reply_markup=InlineKeyboardMarkup(kbd)
+    )
 
 
-def handler_command_start(update: Update, context: CallbackContext, queue_data: List[GetTokenRequest]) -> None:
-    if context.user_data.get(USER_DATA_LOGIN):
-        return
+def handler_command_start(upd: Update, ctx: CallbackContext, queue_data: List[GetTokenRequest]) -> None:
+    if ctx.user_data.get(USER_DATA_V1_AUTHORIZED, False):
+        return do_reject(upd, ctx)
 
-    if check_if_token(context):
-        return do_auth(update, context, queue_data)
+    if check_if_token(ctx):
+        return do_auth(upd, ctx, queue_data)
 
-    return do_greet(update, context)
+    return do_greet(upd, ctx)

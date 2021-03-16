@@ -1,12 +1,14 @@
 from telegram import Update
 from telegram.ext import CallbackContext
 
-from config.constants import USER_DATA_LOGIN
+from config.constants import USER_DATA_V1_AUTHORIZED
+from utils.lang import COMMAND_DENIED_NOT_AUTHORIZED
 
 
-def handler_command_stop(update: Update, context: CallbackContext) -> None:
-    if not context.user_data.get(USER_DATA_LOGIN):
+def handler_command_stop(upd: Update, ctx: CallbackContext) -> None:
+    if not ctx.user_data.get(USER_DATA_V1_AUTHORIZED, False):
+        ctx.bot.send_message(upd.effective_user.id, text=COMMAND_DENIED_NOT_AUTHORIZED)
         return
 
-    context.user_data.clear()
-    context.bot.send_message(update.effective_user.id, text='До новых встреч!')
+    ctx.user_data.clear()
+    ctx.bot.send_message(upd.effective_user.id, text='До новых встреч!')

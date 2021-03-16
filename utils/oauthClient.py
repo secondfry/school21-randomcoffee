@@ -1,26 +1,22 @@
 import os
 from datetime import datetime
-from typing import TypedDict, Union, List, Any, Optional
+from typing import List, Optional
 
 import requests
 from telegram.ext import CallbackContext
 
-from config.constants import USER_DATA_LOGIN
+from config.constants import (
+    USER_DATA_V1_AUTHORIZED, USER_DATA_V1_INTRA_LOGIN,
+    USER_DATA_V1_INTRA_CAMPUS,
+)
 from config.env import INTRA_CLIENT_ID, INTRA_CLIENT_SECRET, INTRA_REDIRECT_URI
 from handlers.commandSettings import settings_choose_campus
+from typings import Token, TokenUser, GetTokenRequest
+from utils.getters import get_primary_campus
 from utils.json_write import json_write
 
 
-class TokenSuccess(TypedDict):
-    access_token: str
-    token_type: str
-    expires_in: int
-    refresh_token: str
-    scope: str
-    created_at: int
-
-
-def check_access_code(code: str) -> Optional[TokenSuccess]:
+def check_access_code(code: str) -> Optional[Token]:
     res = requests.post('https://api.intra.42.fr/oauth/token', data={
         'grant_type': 'authorization_code',
         'client_id': INTRA_CLIENT_ID,
@@ -33,158 +29,6 @@ def check_access_code(code: str) -> Optional[TokenSuccess]:
         return res.json()
 
     return None
-
-
-class Skill(TypedDict):
-    id: int
-    name: str
-    level: int
-
-
-class User(TypedDict):
-    id: int
-    login: str
-    url: str
-
-
-class Cursus(TypedDict):
-    id: int
-    created_at: str
-    name: str
-    slug: str
-
-
-class CursusUser(TypedDict):
-    grade: str
-    level: int
-    skills: List[Skill]
-    blackholed_at: Union[str, None]
-    id: int
-    begin_at: str
-    end_at: Union[str, None]
-    cursus_id: int
-    has_coalition: bool
-    user: User
-    cursus: Cursus
-
-
-class Project(TypedDict):
-    id: int
-    name: str
-    slug: str
-    parent_id: Union[int, None]
-
-
-class ProjectUser(TypedDict):
-    id: int
-    occurrence: int
-    final_mark: int
-    status: str
-    # 'validated?': bool
-    current_team_id: int
-    project: Project
-    cursus_ids: List[int]
-    marked_at: str
-    marked: bool
-    retriable_at: str
-
-
-class LanguageUser(TypedDict):
-    id: int
-    language_id: int
-    user_id: int
-    position: int
-    created_at: str
-
-
-class Achievement(TypedDict):
-    id: int
-    name: str
-    description: str
-    tier: str
-    kind: str
-    visible: bool
-    image: str
-    nbr_of_success: Union[int, None]
-    users_url: str
-
-
-class ExpertiseUser(TypedDict):
-    id: int
-    expertise_id: int
-    interested: bool
-    value: int
-    contact_me: bool
-    created_at: str
-    user_id: int
-
-
-class Language(TypedDict):
-    id: int
-    name: str
-    identifier: str
-    created_at: str
-    updated_at: str
-
-
-class Campus(TypedDict):
-    id: int
-    name: str
-    time_zone: str
-    language: Language
-    users_count: int
-    vogsphere_id: int
-    country: str
-    address: str
-    zip: str
-    city: str
-    website: str
-    facebook: str
-    twitter: str
-    active: bool
-    email_extension: str
-
-
-class CampusUser(TypedDict):
-    id: int
-    user_id: int
-    campus_id: int
-    is_primary: bool
-
-
-class TokenUser(TypedDict):
-    id: int
-    email: str
-    login: int
-    first_name: str
-    last_name: str
-    usual_first_name: Union[str, None]
-    url: str
-    phone: str
-    displayname: str
-    usual_full_name: str
-    image_url: str
-    # 'staff?': bool
-    correction_point: int
-    pool_month: str
-    pool_year: str
-    location: Union[str, None]
-    wallet: int
-    anonymize_date: str
-    groups: List[Any]
-    cursus_users: List[CursusUser]
-    projects_users: List[ProjectUser]
-    languages_users: List[LanguageUser]
-    achievements: List[Achievement]
-    titles: List[Any]
-    titles_users: List[Any]
-    partnerships: List[Any]
-    patroned: List[Any]
-    patroning: List[Any]
-    expertises_users: List[ExpertiseUser]
-    roles: List[Any]
-    campus: List[Campus]
-    campus_users: List[CampusUser]
 
 
 def get_token_user(token: str) -> Optional[TokenUser]:
@@ -205,11 +49,6 @@ def get_token_user(token: str) -> Optional[TokenUser]:
     return None
 
 
-class GetTokenRequest(TypedDict):
-    id: int
-    token: TokenSuccess
-
-
 def get_token_user_queue(ctx: CallbackContext) -> None:
     queue: List[GetTokenRequest] = ctx.job.context
 
@@ -217,15 +56,18 @@ def get_token_user_queue(ctx: CallbackContext) -> None:
         return
 
     request = queue.pop()
+    uid = request['id']
     token = request['token']
 
     if token['created_at'] + token['expires_in'] < datetime.utcnow().timestamp():
-        ctx.bot.send_message(request['id'], text='Пока мы ожидали ответ Интры мой токен доступа успел протухнуть :('
-                                                 '\n\nПовтори авторизацию, пожалуйста!')
+        ctx.bot.send_message(uid, text='Пока мы ожидали ответ Интры мой токен доступа успел протухнуть :(\n\n'
+                                       'Повтори авторизацию, пожалуйста!')
         return
 
     token_user = get_token_user(token['access_token'])
-    ctx.dispatcher.user_data[request['id']][USER_DATA_LOGIN] = token_user['login']
+    ctx.dispatcher.user_data[uid][USER_DATA_V1_AUTHORIZED] = True
+    ctx.dispatcher.user_data[uid][USER_DATA_V1_INTRA_LOGIN] = token_user['login']
+    ctx.dispatcher.user_data[uid][USER_DATA_V1_INTRA_CAMPUS] = get_primary_campus(token_user)
 
     ctx.bot.send_message(
         request['id'],
