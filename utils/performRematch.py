@@ -44,12 +44,31 @@ def perform_rematch(ctx: CallbackContext) -> None:
             if bdata is not None and bdata.get(USER_DATA_V1_MATCH_ACCEPTED, False):
                 bdata[USER_DATA_V1_MATCH_ACCEPTED] = False
                 bdata[USER_DATA_V1_MATCH_WITH] = None
-                ctx.bot.send_message(bid, text='К сожалению, твой пир на случайный кофе не подтвердил встречу... '
-                                               'Ищем нового!')
+                try:
+                    ctx.bot.send_message(bid, text='К сожалению, твой пир на случайный кофе не подтвердил встречу...\n'
+                                                   'Ищем нового!')
+                except:
+                    # TODO actually handle exception
+                    pass
+                ctx.bot.send_message(ADMIN_IDS[0], text='[t#{}] {} <= apology'.format(
+                    bdata[USER_DATA_V1_TELEGRAM_USERNAME],
+                    bdata[USER_DATA_V1_INTRA_LOGIN]
+                ))
 
             udata[USER_DATA_V1_SETTINGS_ACTIVE] = CALLBACK_ACTIVE_NO
             udata[USER_DATA_V1_MATCH_ACCEPTED] = False
             udata[USER_DATA_V1_MATCH_WITH] = None
+            try:
+                ctx.bot.send_message(bid, text='К сожалению, ты не подтвердил встречу... '
+                                               'Автоматически выставляю тебе статус inactive.\n'
+                                               'Ждем тебя, когда вновь появится время на случайный кофе!')
+            except:
+                # TODO actually handle exception
+                pass
+            ctx.bot.send_message(ADMIN_IDS[0], text='[t#{}] {} <= inactive'.format(
+                bdata[USER_DATA_V1_TELEGRAM_USERNAME],
+                bdata[USER_DATA_V1_INTRA_LOGIN]
+            ))
 
     for uid, udata in ctx.dispatcher.user_data.items():
         if not udata.get(USER_DATA_V1_AUTHORIZED, False):

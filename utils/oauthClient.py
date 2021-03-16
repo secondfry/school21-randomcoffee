@@ -60,8 +60,12 @@ def get_token_user_queue(ctx: CallbackContext) -> None:
     token = request['token']
 
     if token['created_at'] + token['expires_in'] < datetime.utcnow().timestamp():
-        ctx.bot.send_message(uid, text='Пока мы ожидали ответ Интры мой токен доступа успел протухнуть :(\n\n'
-                                       'Повтори авторизацию, пожалуйста!')
+        try:
+            ctx.bot.send_message(uid, text='Пока мы ожидали ответ Интры мой токен доступа успел протухнуть :(\n\n'
+                                           'Повтори авторизацию, пожалуйста!')
+        except:
+            # TODO actually handle exception
+            pass
         return
 
     token_user = get_token_user(token['access_token'])
@@ -69,9 +73,13 @@ def get_token_user_queue(ctx: CallbackContext) -> None:
     ctx.dispatcher.user_data[uid][USER_DATA_V1_INTRA_LOGIN] = token_user['login']
     ctx.dispatcher.user_data[uid][USER_DATA_V1_INTRA_CAMPUS] = get_primary_campus(token_user)
 
-    ctx.bot.send_message(
-        request['id'],
-        text='Привет, {}'.format(token_user['login'])
-    )
+    try:
+        ctx.bot.send_message(
+            request['id'],
+            text='Привет, {}'.format(token_user['login'])
+        )
+    except:
+        # TODO actually handle exception
+        pass
 
     settings_choose_campus(ctx, request['id'])

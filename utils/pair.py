@@ -9,10 +9,14 @@ def check_pair(context: CallbackContext, aid: int, bid: int):
 
 
 def notify_user(context: CallbackContext, toid: int, peerlogin: str, peerhandle: str):
-    context.bot.send_message(
-        toid,
-        text='И ты, и {} [tg: @{}] подтвердили встречу! :)'.format(peerlogin, peerhandle)
-    )
+    try:
+        context.bot.send_message(
+            toid,
+            text='И ты, и {} [tg: @{}] подтвердили встречу! :)'.format(peerlogin, peerhandle)
+        )
+    except:
+        # TODO actually handle exception
+        pass
 
 
 def notify_pair(context: CallbackContext, aid: int, bid: int):
