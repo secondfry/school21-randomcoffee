@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Dict, Any
 
 from config.constants import (
     CALLBACK_CAMPUS_KAZAN,
@@ -7,6 +7,9 @@ from config.constants import (
     CALLBACK_ONLINE_YES,
     CALLBACK_ACTIVE_YES,
     CALLBACK_ACTIVE_NO,
+    USER_DATA_V1_SETTINGS_ONLINE,
+    USER_DATA_V1_SETTINGS_CAMPUS,
+    USER_DATA_V1_INTRA_CAMPUS,
 )
 from typings import TokenUser
 
@@ -54,3 +57,16 @@ def get_primary_campus(data: TokenUser) -> Optional[str]:
             return campus['name'].lower()
 
     return None
+
+
+def get_bucket(data: Dict[str, Any]):
+    online = data.get(USER_DATA_V1_SETTINGS_ONLINE, 'unset')
+    if online == CALLBACK_ONLINE_YES:
+        return 'online'
+
+    campus = data.get(USER_DATA_V1_SETTINGS_CAMPUS, 'unset')
+
+    if campus == 'unset':
+        campus = data.get(USER_DATA_V1_INTRA_CAMPUS, 'unset')
+
+    return campus
