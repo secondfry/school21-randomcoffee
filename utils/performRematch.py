@@ -90,6 +90,8 @@ def perform_rematch(ctx: CallbackContext) -> None:
         if udata.get(USER_DATA_V1_MATCH_WITH, None):
             continue
 
+        udata[USER_DATA_V1_MATCH_ACCEPTED] = False
+
         bucket = get_bucket(udata)
         user_buckets[uid] = bucket
 
