@@ -75,6 +75,7 @@ def handler_command_forcenotify(upd: Update, ctx: CallbackContext):
             bdata.get(USER_DATA_V1_TELEGRAM_USERNAME, '???')
         )
 
+    notified.sort()
     ctx.bot.send_message(ADMIN_IDS[0], text='Уведомлены')
     for chunk in chunks(notified, 30):
         ctx.bot.send_message(ADMIN_IDS[0], text='```\n{}\n```'.format('\n'.join(chunk)), parse_mode=ParseMode.MARKDOWN)
