@@ -1,6 +1,11 @@
 import logging
 
+from telegram import Update
+from telegram.ext import CallbackContext
 
-def handler_error(update, context):
-    """Log Errors caused by Updates."""
-    logging.warning('Update "%s" caused error "%s"', update, context.handler_error)
+from config.env import ADMIN_IDS
+
+
+def handler_error(upd: Update, ctx: CallbackContext):
+    ctx.bot.send_message(ADMIN_IDS[0], text='Update {} caused error {}'.format(upd, ctx.error))
+    logging.warning('Update "%s" caused error "%s"', upd, ctx.error)
