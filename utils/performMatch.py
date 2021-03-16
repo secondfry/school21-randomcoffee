@@ -1,6 +1,6 @@
 import random
 from collections import deque
-from typing import Dict, Deque, List, Optional
+from typing import Dict, Deque, Optional
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, TelegramError, ParseMode
 from telegram.ext import CallbackContext
@@ -17,6 +17,7 @@ from config.constants import (
     USER_DATA_V1_AUTHORIZED,
     CALLBACK_ACTIVE_YES,
     USER_DATA_V1_SETTINGS_CAMPUS,
+    USER_DATA_V1_MATCH_NOTIFIED,
 )
 from config.env import ADMIN_IDS
 from handlers.error import send_error
@@ -39,6 +40,7 @@ def send_match_message(ctx: CallbackContext, fromid: int, tologin: str, tohandle
             ),
             reply_markup=InlineKeyboardMarkup(kbd)
         )
+        ctx.dispatcher.user_data[fromid][USER_DATA_V1_MATCH_NOTIFIED] = True
     except:
         # TODO actually handle exception
         pass
@@ -75,6 +77,7 @@ def perform_match(ctx: CallbackContext) -> None:
 
     for uid, udata in ctx.dispatcher.user_data.items():
         udata[USER_DATA_V1_MATCH_ACCEPTED] = False
+        udata[USER_DATA_V1_MATCH_NOTIFIED] = False
         udata[USER_DATA_V1_MATCH_WITH] = None
 
         if not udata.get(USER_DATA_V1_AUTHORIZED, False):

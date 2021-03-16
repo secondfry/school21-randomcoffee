@@ -1,4 +1,4 @@
-from telegram import Update, InlineKeyboardButton, ParseMode
+from telegram import Update, ParseMode
 from telegram.ext import CallbackContext
 
 from config.constants import (

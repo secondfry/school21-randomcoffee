@@ -17,6 +17,7 @@ from config.constants import (
     CALLBACK_ACTIVE_YES,
     USER_DATA_V1_AUTHORIZED,
     USER_DATA_V1_SETTINGS_CAMPUS,
+    USER_DATA_V1_MATCH_NOTIFIED,
 )
 from config.env import ADMIN_IDS
 from utils.getters import get_bucket
@@ -48,6 +49,7 @@ def perform_rematch(ctx: CallbackContext) -> None:
             bdata = ctx.dispatcher.user_data.get(bid, {})
             if bdata is not None and bdata.get(USER_DATA_V1_MATCH_ACCEPTED, False):
                 bdata[USER_DATA_V1_MATCH_ACCEPTED] = False
+                bdata[USER_DATA_V1_MATCH_NOTIFIED] = False
                 bdata[USER_DATA_V1_MATCH_WITH] = None
                 try:
                     ctx.bot.send_message(bid, text='К сожалению, твой пир на случайный кофе не подтвердил встречу...\n'
@@ -63,6 +65,7 @@ def perform_rematch(ctx: CallbackContext) -> None:
 
             udata[USER_DATA_V1_SETTINGS_ACTIVE] = CALLBACK_ACTIVE_NO
             udata[USER_DATA_V1_MATCH_ACCEPTED] = False
+            udata[USER_DATA_V1_MATCH_NOTIFIED] = False
             udata[USER_DATA_V1_MATCH_WITH] = None
             try:
                 ctx.bot.send_message(uid, text='К сожалению, ты не подтвердил встречу... '
@@ -90,6 +93,7 @@ def perform_rematch(ctx: CallbackContext) -> None:
             continue
 
         udata[USER_DATA_V1_MATCH_ACCEPTED] = False
+        udata[USER_DATA_V1_MATCH_NOTIFIED] = False
 
         bucket = get_bucket(udata)
 
