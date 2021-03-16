@@ -1,6 +1,6 @@
 import random
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, TelegramError
 from telegram.ext import CallbackContext
 
 from config.constants import (
@@ -16,6 +16,7 @@ from config.constants import (
     CALLBACK_ACTIVE_YES,
 )
 from config.env import SAVIOUR_ID, ADMIN_IDS
+from handlers.error import send_error
 from utils.getters import get_bucket
 
 
@@ -67,16 +68,20 @@ def perform_match(ctx: CallbackContext) -> None:
                 ctx.bot.send_message(uid, text='На этой неделе ты выбрал не идти на случайный кофе.\n'
                                                'Если передумаешь и изменишь настройки, '
                                                'то завтра тебе должно будет подобрать пару.')
-            except Exception as ex:
-                ctx.bot.send_message(
-                    ADMIN_IDS[0],
-                    text='Exception with [tid#{}][tus#{}] {}. Can\'t send inactivity notice.\n{}'.format(
-                        uid,
+            except TelegramError as ex:
+                if str(ex) == 'Forbidden: bot was blocked by the user':
+                    ctx.bot.send_message(ADMIN_IDS[0], text='[t#{}] {} <= removed due to being blocked'.format(
                         udata[USER_DATA_V1_TELEGRAM_USERNAME],
-                        udata[USER_DATA_V1_INTRA_LOGIN],
-                        ex
-                    )
-                )
+                        udata[USER_DATA_V1_INTRA_LOGIN]
+                    ))
+                    udata.clear()
+                    udata[USER_DATA_V1_AUTHORIZED] = False
+                else:
+                    send_error(ctx, uid, udata[USER_DATA_V1_TELEGRAM_USERNAME], udata[USER_DATA_V1_INTRA_LOGIN],
+                               'Can\'t send inactivity notice.', ex)
+            except Exception as ex:
+                send_error(ctx, uid, udata[USER_DATA_V1_TELEGRAM_USERNAME], udata[USER_DATA_V1_INTRA_LOGIN],
+                           'Can\'t send inactivity notice.', ex)
             continue
 
         bucket = get_bucket(udata)
