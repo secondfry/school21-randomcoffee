@@ -63,9 +63,20 @@ def perform_match(ctx: CallbackContext) -> None:
 
         if udata.get(USER_DATA_V1_SETTINGS_ACTIVE, CALLBACK_ACTIVE_NO) != CALLBACK_ACTIVE_YES:
             udata[USER_DATA_V1_SETTINGS_ACTIVE] = CALLBACK_ACTIVE_NO
-            ctx.bot.send_message(uid, text='На этой неделе ты выбрал не идти на случайный кофе.\n'
-                                           'Если передумаешь и изменишь настройки, '
-                                           'то завтра тебе должно будет подобрать пару.')
+            try:
+                ctx.bot.send_message(uid, text='На этой неделе ты выбрал не идти на случайный кофе.\n'
+                                               'Если передумаешь и изменишь настройки, '
+                                               'то завтра тебе должно будет подобрать пару.')
+            except Exception as ex:
+                ctx.bot.send_message(
+                    ADMIN_IDS[0],
+                    text='Exception with [tid#{}][tus#{}] {}. Can\'t send inactivity notice.\n{}'.format(
+                        uid,
+                        udata[USER_DATA_V1_TELEGRAM_USERNAME],
+                        udata[USER_DATA_V1_INTRA_LOGIN],
+                        ex
+                    )
+                )
             continue
 
         bucket = get_bucket(udata)
