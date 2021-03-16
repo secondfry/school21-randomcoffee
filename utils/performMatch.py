@@ -166,5 +166,7 @@ def perform_match(ctx: CallbackContext) -> None:
         #     match(ctx, a, b, logins.get(a), logins.get(b), handles.get(a), handles.get(b))
 
     buckets.clear()
+    user_campuses.clear()
+    user_buckets.clear()
     user_handles.clear()
     user_logins.clear()
