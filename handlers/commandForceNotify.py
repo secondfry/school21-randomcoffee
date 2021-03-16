@@ -18,6 +18,9 @@ from utils.performMatch import send_match_message
 
 
 def handler_command_forcenotify(upd: Update, ctx: CallbackContext):
+    if upd.effective_user.id not in ADMIN_IDS:
+        return
+
     notified = []
 
     for uid, udata in ctx.dispatcher.user_data.items():
