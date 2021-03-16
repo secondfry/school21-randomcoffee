@@ -1,11 +1,8 @@
-import logging
 import random
 
 from telegram.ext import CallbackContext
 
 from config.constants import (
-    USER_DATA_V1_SETTINGS_CAMPUS,
-    USER_DATA_V1_SETTINGS_ONLINE,
     CALLBACK_CAMPUS_KAZAN,
     CALLBACK_CAMPUS_MOSCOW,
     USER_DATA_V1_TELEGRAM_USERNAME,
@@ -15,9 +12,10 @@ from config.constants import (
     USER_DATA_V1_SETTINGS_ACTIVE,
     CALLBACK_ACTIVE_NO,
     CALLBACK_ACTIVE_YES,
-    CALLBACK_ONLINE_NO,
+    USER_DATA_V1_AUTHORIZED,
 )
-from config.env import SAVIOUR_ID
+from config.env import SAVIOUR_ID, ADMIN_IDS
+from utils.getters import get_bucket
 from utils.performMatch import match
 
 
@@ -25,64 +23,97 @@ def perform_rematch(ctx: CallbackContext) -> None:
     buckets = {
         CALLBACK_CAMPUS_KAZAN: [],
         CALLBACK_CAMPUS_MOSCOW: [],
-        'online': []
+        'online': [],
+        '???': [],
     }
     handles = {}
     logins = {}
 
-    for id, person in ctx.dispatcher.user_data.items():
-        active = person.get(USER_DATA_V1_SETTINGS_ACTIVE, CALLBACK_ACTIVE_NO)
-        if active == CALLBACK_ACTIVE_NO:
+    for uid, udata in ctx.dispatcher.user_data.items():
+        if USER_DATA_V1_AUTHORIZED not in udata:
+            udata[USER_DATA_V1_AUTHORIZED] = False
             continue
 
-        accepted = person.get(USER_DATA_V1_MATCH_ACCEPTED, False)
-        matched = person.get(USER_DATA_V1_MATCH_WITH, None)
-        if not accepted and matched:
-            person[USER_DATA_V1_SETTINGS_ACTIVE] = CALLBACK_ACTIVE_NO
-
-    for id, person in ctx.dispatcher.user_data.items():
-        accepted = person.get(USER_DATA_V1_MATCH_ACCEPTED, False)
-        peer = person.get(USER_DATA_V1_MATCH_WITH, None)
-        peer_active = ctx.dispatcher.user_data.get(peer, {}).get(USER_DATA_V1_SETTINGS_ACTIVE, CALLBACK_ACTIVE_NO)
-
-        if not accepted or peer_active == CALLBACK_ACTIVE_YES:
+        if not udata[USER_DATA_V1_AUTHORIZED]:
             continue
 
-        ctx.bot.send_message(id, text='К сожалению, твой пир на случайный кофе не подтвердил встречу... Ищем нового!')
-
-        # FIXME lower code duplication
-        campus = person.get(USER_DATA_V1_SETTINGS_CAMPUS, '???')
-        online = person.get(USER_DATA_V1_SETTINGS_ONLINE, CALLBACK_ONLINE_NO)
-
-        handle = person.get(USER_DATA_V1_TELEGRAM_USERNAME, '???')
-        handles[id] = handle
-
-        login = person.get(USER_DATA_V1_INTRA_LOGIN, '???')
-        logins[id] = login
-
-        if online:
-            buckets['online'].append(id)
-        else:
-            buckets[campus].append(id)
-
-    # FIXME lower code duplication
-    for campus, bucket in buckets.items():
-        if campus == '???':
-            if bucket:
-                logging.error('For some reason ??? bucket has #{} accounts in it'.format(len(bucket)))
+        if USER_DATA_V1_SETTINGS_ACTIVE not in udata:
+            udata[USER_DATA_V1_SETTINGS_ACTIVE] = CALLBACK_ACTIVE_NO
             continue
 
-        random.shuffle(bucket)
-        while len(bucket) > 1:
-            a = bucket.pop()
-            b = bucket.pop()
+        if udata[USER_DATA_V1_SETTINGS_ACTIVE] != CALLBACK_ACTIVE_YES:
+            continue
+
+        if USER_DATA_V1_MATCH_WITH in udata and \
+                udata[USER_DATA_V1_MATCH_WITH] and \
+                not udata[USER_DATA_V1_MATCH_ACCEPTED]:
+            bid = udata[USER_DATA_V1_MATCH_WITH]
+            bdata = ctx.dispatcher.user_data.get(bid, {})
+            if bdata is not None and bdata.get(USER_DATA_V1_MATCH_ACCEPTED, False):
+                bdata[USER_DATA_V1_MATCH_ACCEPTED] = False
+                bdata[USER_DATA_V1_MATCH_WITH] = None
+                ctx.bot.send_message(bid, text='К сожалению, твой пир на случайный кофе не подтвердил встречу... '
+                                               'Ищем нового!')
+
+            udata[USER_DATA_V1_SETTINGS_ACTIVE] = CALLBACK_ACTIVE_NO
+            udata[USER_DATA_V1_MATCH_ACCEPTED] = False
+            udata[USER_DATA_V1_MATCH_WITH] = None
+
+    for uid, udata in ctx.dispatcher.user_data.items():
+        if USER_DATA_V1_AUTHORIZED not in udata:
+            udata[USER_DATA_V1_AUTHORIZED] = False
+            continue
+
+        if not udata[USER_DATA_V1_AUTHORIZED]:
+            continue
+
+        if USER_DATA_V1_SETTINGS_ACTIVE not in udata:
+            udata[USER_DATA_V1_SETTINGS_ACTIVE] = CALLBACK_ACTIVE_NO
+            continue
+
+        if udata[USER_DATA_V1_SETTINGS_ACTIVE] != CALLBACK_ACTIVE_YES:
+            continue
+
+        if USER_DATA_V1_MATCH_WITH in udata and udata[USER_DATA_V1_MATCH_WITH]:
+            continue
+
+        bucket = get_bucket(udata)
+
+        handle = udata.get(USER_DATA_V1_TELEGRAM_USERNAME, '???')
+        handles[uid] = handle
+
+        login = udata.get(USER_DATA_V1_INTRA_LOGIN, '???')
+        logins[uid] = login
+
+        buckets[bucket].append(uid)
+
+    for bucket, uids in buckets.items():
+        if bucket == '???':
+            if uids:
+                ctx.bot.send_message(
+                    ADMIN_IDS[0],
+                    text='For some reason ??? bucket has #{} accounts in it'.format(len(uids))
+                )
+            continue
+
+        random.shuffle(uids)
+        while len(uids) > 1:
+            a = uids.pop()
+            b = uids.pop()
             match(ctx, a, b, logins.get(a), logins.get(b), handles.get(a), handles.get(b))
 
-        if campus != 'online' and bucket:
-            last = bucket.pop()
+        if not uids:
+            continue
+
+        if bucket != 'online':
+            last = uids.pop()
             buckets['online'].append(last)
 
-        if campus == 'online' and bucket:
-            a = bucket.pop()
+        if bucket == 'online':
+            a = uids.pop()
             b = SAVIOUR_ID
             match(ctx, a, b, logins.get(a), logins.get(b), handles.get(a), handles.get(b))
+
+    buckets.clear()
+    handles.clear()
+    logins.clear()

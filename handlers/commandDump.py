@@ -5,6 +5,8 @@ from config.constants import (
     USER_DATA_V1_INTRA_LOGIN,
     USER_DATA_V1_MATCH_WITH,
     USER_DATA_V1_AUTHORIZED,
+    USER_DATA_V1_SETTINGS_ACTIVE,
+    CALLBACK_ACTIVE_NO,
 )
 from config.env import ADMIN_IDS
 from utils.getters import get_bucket
@@ -30,6 +32,9 @@ def handler_command_dump(upd: Update, ctx: CallbackContext) -> None:
         if USER_DATA_V1_MATCH_WITH not in adata:
             continue
 
+        if USER_DATA_V1_SETTINGS_ACTIVE not in adata or adata[USER_DATA_V1_SETTINGS_ACTIVE] == CALLBACK_ACTIVE_NO:
+            continue
+
         bid = adata[USER_DATA_V1_MATCH_WITH]
         bdata = ctx.dispatcher.user_data[bid]
         abucket = get_bucket(adata)
@@ -45,6 +50,9 @@ def handler_command_dump(upd: Update, ctx: CallbackContext) -> None:
             data_nok.append(message)
         else:
             data_ok.append(message)
+
+    data_ok.sort()
+    data_nok.sort()
 
     for lst in [data_ok, data_nok]:
         for chunk in chunks(lst, 25):

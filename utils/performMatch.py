@@ -1,12 +1,9 @@
-import logging
 import random
 
-from telegram import InlineKeyboardMarkup, InlineKeyboardButton
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackContext
 
 from config.constants import (
-    USER_DATA_V1_SETTINGS_CAMPUS,
-    USER_DATA_V1_SETTINGS_ONLINE,
     CALLBACK_CAMPUS_KAZAN,
     CALLBACK_CAMPUS_MOSCOW,
     USER_DATA_V1_TELEGRAM_USERNAME,
@@ -15,9 +12,11 @@ from config.constants import (
     USER_DATA_V1_MATCH_WITH,
     USER_DATA_V1_SETTINGS_ACTIVE,
     CALLBACK_ACTIVE_NO,
-    CALLBACK_ONLINE_NO,
+    USER_DATA_V1_AUTHORIZED,
+    CALLBACK_ACTIVE_YES,
 )
-from config.env import SAVIOUR_ID
+from config.env import SAVIOUR_ID, ADMIN_IDS
+from utils.getters import get_bucket
 
 
 def send_match_message(ctx: CallbackContext, fromid: int, tologin: str, tohandle: str) -> None:
@@ -38,12 +37,10 @@ def send_match_message(ctx: CallbackContext, fromid: int, tologin: str, tohandle
 
 
 def match(ctx: CallbackContext, aid: int, bid: int, alogin: str, blogin: str, ahandle: str, bhandle: str) -> None:
-    ctx.dispatcher.user_data[aid][USER_DATA_V1_MATCH_ACCEPTED] = False
     ctx.dispatcher.user_data[aid][USER_DATA_V1_MATCH_WITH] = bid
-    ctx.dispatcher.user_data[bid][USER_DATA_V1_MATCH_ACCEPTED] = False
     ctx.dispatcher.user_data[bid][USER_DATA_V1_MATCH_WITH] = aid
-    # send_match_message(ctx, aid, blogin, bhandle)
-    # send_match_message(ctx, bid, alogin, ahandle)
+    send_match_message(ctx, aid, blogin, bhandle)
+    send_match_message(ctx, bid, alogin, ahandle)
 
 
 def perform_match(ctx: CallbackContext) -> None:
@@ -51,47 +48,66 @@ def perform_match(ctx: CallbackContext) -> None:
         CALLBACK_CAMPUS_KAZAN: [],
         CALLBACK_CAMPUS_MOSCOW: [],
         'online': [],
-        '???': []
+        '???': [],
     }
     handles = {}
     logins = {}
 
-    for id, person in ctx.dispatcher.user_data.items():
-        active = person.get(USER_DATA_V1_SETTINGS_ACTIVE, CALLBACK_ACTIVE_NO)
-        if active == CALLBACK_ACTIVE_NO:
+    for uid, udata in ctx.dispatcher.user_data.items():
+        udata[USER_DATA_V1_MATCH_ACCEPTED] = False
+        udata[USER_DATA_V1_MATCH_WITH] = None
+
+        if USER_DATA_V1_AUTHORIZED not in udata:
+            udata[USER_DATA_V1_AUTHORIZED] = False
             continue
 
-        campus = person.get(USER_DATA_V1_SETTINGS_CAMPUS, '???')
-        online = person.get(USER_DATA_V1_SETTINGS_ONLINE, CALLBACK_ONLINE_NO)
-
-        handle = person.get(USER_DATA_V1_TELEGRAM_USERNAME, '???')
-        handles[id] = handle
-
-        login = person.get(USER_DATA_V1_INTRA_LOGIN, '???')
-        logins[id] = login
-
-        if online:
-            buckets['online'].append(id)
-        else:
-            buckets[campus].append(id)
-
-    for campus, bucket in buckets.items():
-        if campus == '???':
-            if bucket:
-                logging.error('For some reason ??? bucket has #{} accounts in it'.format(len(bucket)))
+        if not udata[USER_DATA_V1_AUTHORIZED]:
             continue
 
-        random.shuffle(bucket)
-        while len(bucket) > 1:
-            a = bucket.pop()
-            b = bucket.pop()
+        if USER_DATA_V1_SETTINGS_ACTIVE not in udata:
+            udata[USER_DATA_V1_SETTINGS_ACTIVE] = CALLBACK_ACTIVE_NO
+            continue
+
+        if udata[USER_DATA_V1_SETTINGS_ACTIVE] != CALLBACK_ACTIVE_YES:
+            continue
+
+        bucket = get_bucket(udata)
+
+        handle = udata.get(USER_DATA_V1_TELEGRAM_USERNAME, '???')
+        handles[uid] = handle
+
+        login = udata.get(USER_DATA_V1_INTRA_LOGIN, '???')
+        logins[uid] = login
+
+        buckets[bucket].append(uid)
+
+    for bucket, uids in buckets.items():
+        if bucket == '???':
+            if uids:
+                ctx.bot.send_message(
+                    ADMIN_IDS[0],
+                    text='For some reason ??? bucket has #{} accounts in it'.format(len(uids))
+                )
+            continue
+
+        random.shuffle(uids)
+        while len(uids) > 1:
+            a = uids.pop()
+            b = uids.pop()
             match(ctx, a, b, logins.get(a), logins.get(b), handles.get(a), handles.get(b))
 
-        if campus != 'online' and bucket:
-            last = bucket.pop()
+        if not uids:
+            continue
+
+        if bucket != 'online':
+            last = uids.pop()
             buckets['online'].append(last)
 
-        if campus == 'online' and bucket:
-            a = bucket.pop()
+        if bucket == 'online':
+            a = uids.pop()
             b = SAVIOUR_ID
             match(ctx, a, b, logins.get(a), logins.get(b), handles.get(a), handles.get(b))
+
+    buckets.clear()
+    handles.clear()
+    logins.clear()
