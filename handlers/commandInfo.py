@@ -45,7 +45,7 @@ def info_other(upd: Update, ctx: CallbackContext) -> None:
             user = udata
             break
 
-        if uid == param:
+        if str(uid) == param:
             user = udata
             break
 
@@ -54,7 +54,14 @@ def info_other(upd: Update, ctx: CallbackContext) -> None:
         return
 
     message = info(user, is_admin_request=True)
-    ctx.bot.send_message(upd.effective_user.id, text='```\n{}\n```'.format(message), parse_mode=ParseMode.MARKDOWN)
+    ctx.bot.send_message(
+        upd.effective_user.id,
+        text='```\ntelegram.id: {}\n{}\n```'.format(
+            uid,
+            message
+        ),
+        parse_mode=ParseMode.MARKDOWN
+    )
 
 
 def info_self(upd: Update, ctx: CallbackContext) -> None:
