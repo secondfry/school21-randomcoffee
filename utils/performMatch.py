@@ -33,7 +33,7 @@ def send_match_message(ctx: CallbackContext, fromid: int, tologin: str, tohandle
     try:
         ctx.bot.send_message(
             fromid,
-            text='Твой случайный кофе на этой неделе...\nC пиром {} [tg: @{}]!'.format(
+            text='Твой случайный кофе на этой неделе...\nC пиром {} [tg: @{}]!\n\nПодтверди получение сообщения:'.format(
                 tologin,
                 tohandle
             ),
