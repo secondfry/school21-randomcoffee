@@ -1,4 +1,5 @@
 import random
+import secrets
 from collections import deque
 from typing import Dict, Deque, Optional
 
@@ -121,7 +122,7 @@ def perform_match(ctx: CallbackContext) -> None:
         buckets[bucket].append(uid)
 
     for bucket, uids in buckets.items():
-        random.shuffle(uids)
+        random.shuffle(uids, random=lambda: secrets.randbelow(100) / 100.0)
 
     for bucket, uids in buckets.items():
         if bucket == '???':
