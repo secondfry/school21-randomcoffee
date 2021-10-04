@@ -1,16 +1,13 @@
-from telegram import Update, ParseMode
-from telegram.ext import CallbackContext
-
-from config.constants import (
-    USER_DATA_V1_AUTHORIZED,
-    USER_DATA_V1_SETTINGS_ACTIVE,
-    CALLBACK_ACTIVE_NO,
-    CALLBACK_ACTIVE_YES,
-    USER_DATA_V1_INTRA_LOGIN,
-)
+from config.constants import (CALLBACK_ACTIVE_NO, CALLBACK_ACTIVE_YES,
+                              USER_DATA_V1_AUTHORIZED,
+                              USER_DATA_V1_INTRA_LOGIN,
+                              USER_DATA_V1_SETTINGS_ACTIVE)
 from config.env import ADMIN_IDS
-from handlers.commandDump import chunks
+from telegram import ParseMode, Update
+from telegram.ext import CallbackContext
 from utils.getters import get_accepted_sign
+
+from handlers.commandDump import chunks, perform_dump
 
 
 def handler_command_forceactive(upd: Update, ctx: CallbackContext):
@@ -50,3 +47,5 @@ def handler_command_forceactive(upd: Update, ctx: CallbackContext):
     ctx.bot.send_message(ADMIN_IDS[0], text='Активированы')
     for chunk in chunks(activated, 30):
         ctx.bot.send_message(ADMIN_IDS[0], text='```\n{}\n```'.format('\n'.join(chunk)), parse_mode=ParseMode.MARKDOWN)
+
+    perform_dump(ctx, ADMIN_IDS[0])

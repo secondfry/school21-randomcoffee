@@ -21,11 +21,14 @@ from config.constants import (
     USER_DATA_V1_MATCH_NOTIFIED,
 )
 from config.env import ADMIN_IDS
+from handlers.commandDump import perform_dump
 from utils.getters import get_bucket
 from utils.performMatch import match, find_peer_from_campus
 
 
 def perform_rematch(ctx: CallbackContext) -> None:
+    perform_dump(ctx, ADMIN_IDS[0])
+
     buckets: Dict[str, Deque[int]] = {
         CALLBACK_CAMPUS_KAZAN: deque(),
         CALLBACK_CAMPUS_MOSCOW: deque(),
@@ -148,3 +151,5 @@ def perform_rematch(ctx: CallbackContext) -> None:
     user_campuses.clear()
     user_handles.clear()
     user_logins.clear()
+
+    perform_dump(ctx, ADMIN_IDS[0])

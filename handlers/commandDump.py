@@ -20,10 +20,7 @@ def chunks(lst, n):
         yield lst[i:i + n]
 
 
-def handler_command_dump(upd: Update, ctx: CallbackContext) -> None:
-    if upd.effective_user.id not in ADMIN_IDS:
-        return
-
+def perform_dump(ctx: CallbackContext, target_uid: int) -> None:
     data_perfect = []
     data_ok = []
     data_nok = []
@@ -97,7 +94,14 @@ def handler_command_dump(upd: Update, ctx: CallbackContext) -> None:
     ]:
         if not lst:
             continue
-        ctx.bot.send_message(upd.effective_user.id, text=name)
+        ctx.bot.send_message(target_uid, text=name)
         for chunk in chunks(lst, 30):
             message = '```\n{}\n```'.format('\n'.join(chunk))
-            ctx.bot.send_message(upd.effective_user.id, text=message, parse_mode=ParseMode.MARKDOWN)
+            ctx.bot.send_message(target_uid, text=message, parse_mode=ParseMode.MARKDOWN)
+
+
+def handler_command_dump(upd: Update, ctx: CallbackContext) -> None:
+    if upd.effective_user.id not in ADMIN_IDS:
+        return
+
+    perform_dump(ctx, upd.effective_user.id)
