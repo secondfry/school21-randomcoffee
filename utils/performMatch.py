@@ -15,9 +15,8 @@ from config.constants import (CALLBACK_ACTIVE_NO, CALLBACK_ACTIVE_YES,
                               USER_DATA_V1_TELEGRAM_USERNAME)
 from config.env import ADMIN_IDS
 from handlers.commandDump import perform_dump
-from handlers.error import send_error
-from telegram import (InlineKeyboardButton, InlineKeyboardMarkup, ParseMode,
-                      TelegramError)
+from handlers.error import handle_common_block_errors, send_error
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, TelegramError
 from telegram.ext import CallbackContext
 
 from utils.getters import get_bucket
@@ -92,15 +91,7 @@ def perform_match(ctx: CallbackContext) -> None:
                                                'Если передумаешь и изменишь настройки, '
                                                'то завтра тебе должно будет подобрать пару.')
             except TelegramError as ex:
-                if str(ex) == 'Forbidden: bot was blocked by the user':
-                    ctx.bot.send_message(ADMIN_IDS[0], text='`[t#{0:<10}] {2:<8}` @{1} <= removed due to being blocked'.format(
-                        uid,
-                        udata.get(USER_DATA_V1_TELEGRAM_USERNAME, '???').replace('_', '\\_'),
-                        udata[USER_DATA_V1_INTRA_LOGIN]
-                    ), parse_mode=ParseMode.MARKDOWN)
-                    udata.clear()
-                    udata[USER_DATA_V1_AUTHORIZED] = False
-                else:
+                if not handle_common_block_errors(ctx, uid, ex):
                     send_error(ctx, uid, udata[USER_DATA_V1_TELEGRAM_USERNAME], udata[USER_DATA_V1_INTRA_LOGIN],
                                'Can\'t send inactivity notice.', ex)
             except Exception as ex:

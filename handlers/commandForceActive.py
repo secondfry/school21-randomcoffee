@@ -1,13 +1,16 @@
 from config.constants import (CALLBACK_ACTIVE_NO, CALLBACK_ACTIVE_YES,
                               USER_DATA_V1_AUTHORIZED,
                               USER_DATA_V1_INTRA_LOGIN,
-                              USER_DATA_V1_SETTINGS_ACTIVE)
+                              USER_DATA_V1_SETTINGS_ACTIVE,
+                              USER_DATA_V1_TELEGRAM_USERNAME)
 from config.env import ADMIN_IDS
 from telegram import ParseMode, Update
+from telegram.error import TelegramError
 from telegram.ext import CallbackContext
 from utils.getters import get_accepted_sign
 
 from handlers.commandDump import chunks, perform_dump
+from handlers.error import handle_common_block_errors, send_error
 
 
 def handler_command_forceactive(upd: Update, ctx: CallbackContext):
@@ -40,8 +43,13 @@ def handler_command_forceactive(upd: Update, ctx: CallbackContext):
                      'В качестве эксперимента на этой неделе все пользователи становятся активными! '
                      'Ато вдруг ты хотел сходить на кофе, но опять забыл или еще чего ;).\n\n'
                      'P.S. Ты можешь обратно стать неактивным при помощи настроек /settings')
-        except Exception as e:
-            ctx.bot.send_message(ADMIN_IDS[0], text='{}'.format(e))
+        except TelegramError as ex:
+            if not handle_common_block_errors(ctx, uid, ex):
+                send_error(ctx, uid, udata[USER_DATA_V1_TELEGRAM_USERNAME], udata[USER_DATA_V1_INTRA_LOGIN],
+                            'Can\'t send force active message.', ex)
+        except Exception as ex:
+            send_error(ctx, uid, udata[USER_DATA_V1_TELEGRAM_USERNAME], udata[USER_DATA_V1_INTRA_LOGIN],
+                            'Can\'t send force active message.', ex)
 
     activated.sort()
     ctx.bot.send_message(ADMIN_IDS[0], text='Активированы')
