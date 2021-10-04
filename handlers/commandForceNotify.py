@@ -1,4 +1,5 @@
 from telegram import Update, ParseMode
+from telegram.error import TelegramError
 from telegram.ext import CallbackContext
 
 from config.constants import (
@@ -13,6 +14,7 @@ from config.constants import (
 )
 from config.env import ADMIN_IDS
 from handlers.commandDump import chunks
+from handlers.error import handle_common_block_errors, send_error
 from utils.getters import get_accepted_sign
 from utils.performMatch import send_match_message
 
@@ -65,9 +67,13 @@ def handler_command_forcenotify(upd: Update, ctx: CallbackContext):
             ctx.bot.send_message(uid, text='Ой-ой-ой, я запутался кому отправлял уведомления, а кому нет. Не серчай!\n'
                                            'P.S. Если получение матча не подтвердить, '
                                            'то бот автоматически сделает тебя неактивным.')
-        except:
-            # TODO actually handle exception
-            pass
+        except TelegramError as ex:
+            if not handle_common_block_errors(ctx, uid, ex):
+                send_error(ctx, uid, udata[USER_DATA_V1_TELEGRAM_USERNAME], udata[USER_DATA_V1_INTRA_LOGIN],
+                           'Can\'t send force active message.', ex)
+        except Exception as ex:
+            send_error(ctx, uid, udata[USER_DATA_V1_TELEGRAM_USERNAME], udata[USER_DATA_V1_INTRA_LOGIN],
+                       'Can\'t send force active message.', ex)
         send_match_message(
             ctx,
             uid,
