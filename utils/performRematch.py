@@ -3,27 +3,24 @@ import secrets
 from collections import deque
 from typing import Deque, Dict
 
-from telegram import ParseMode
-from telegram.ext import CallbackContext
-
-from config.constants import (
-    CALLBACK_CAMPUS_KAZAN,
-    CALLBACK_CAMPUS_MOSCOW,
-    USER_DATA_V1_TELEGRAM_USERNAME,
-    USER_DATA_V1_INTRA_LOGIN,
-    USER_DATA_V1_MATCH_ACCEPTED,
-    USER_DATA_V1_MATCH_WITH,
-    USER_DATA_V1_SETTINGS_ACTIVE,
-    CALLBACK_ACTIVE_NO,
-    CALLBACK_ACTIVE_YES,
-    USER_DATA_V1_AUTHORIZED,
-    USER_DATA_V1_SETTINGS_CAMPUS,
-    USER_DATA_V1_MATCH_NOTIFIED,
-)
+from config.constants import (CALLBACK_ACTIVE_NO, CALLBACK_ACTIVE_YES,
+                              CALLBACK_CAMPUS_KAZAN, CALLBACK_CAMPUS_MOSCOW,
+                              USER_DATA_V1_AUTHORIZED,
+                              USER_DATA_V1_INTRA_LOGIN,
+                              USER_DATA_V1_MATCH_ACCEPTED,
+                              USER_DATA_V1_MATCH_NOTIFIED,
+                              USER_DATA_V1_MATCH_WITH,
+                              USER_DATA_V1_SETTINGS_ACTIVE,
+                              USER_DATA_V1_SETTINGS_CAMPUS,
+                              USER_DATA_V1_TELEGRAM_USERNAME)
 from config.env import ADMIN_IDS
 from handlers.commandDump import perform_dump
+from handlers.error import handle_common_block_errors, send_error
+from telegram import ParseMode, TelegramError
+from telegram.ext import CallbackContext
+
 from utils.getters import get_bucket
-from utils.performMatch import match, find_peer_from_campus
+from utils.performMatch import find_peer_from_campus
 
 
 def perform_rematch(ctx: CallbackContext) -> None:
@@ -58,9 +55,13 @@ def perform_rematch(ctx: CallbackContext) -> None:
                 try:
                     ctx.bot.send_message(bid, text='К сожалению, твой пир на случайный кофе не подтвердил встречу...\n'
                                                    'Ищем нового!')
-                except:
-                    # TODO actually handle exception
-                    pass
+                except TelegramError as ex:
+                    if not handle_common_block_errors(ctx, bid, ex):
+                        send_error(ctx, bid, bdata[USER_DATA_V1_TELEGRAM_USERNAME], bdata[USER_DATA_V1_INTRA_LOGIN],
+                                   'Can\'t send apology.', ex)
+                except Exception as ex:
+                    send_error(ctx, bid, bdata[USER_DATA_V1_TELEGRAM_USERNAME], bdata[USER_DATA_V1_INTRA_LOGIN],
+                               'Can\'t send apology.', ex)
                 ctx.bot.send_message(ADMIN_IDS[0], text='`[t#{0:<10}] {2:<8}` @{1} <= apology'.format(
                     bid,
                     bdata.get(USER_DATA_V1_TELEGRAM_USERNAME, '???').replace('_', '\\_'),
@@ -75,9 +76,13 @@ def perform_rematch(ctx: CallbackContext) -> None:
                 ctx.bot.send_message(uid, text='К сожалению, ты не подтвердил встречу... '
                                                'Автоматически выставляю тебе статус inactive.\n'
                                                'Ждем тебя, когда вновь появится время на случайный кофе!')
-            except:
-                # TODO actually handle exception
-                pass
+            except TelegramError as ex:
+                if not handle_common_block_errors(ctx, uid, ex):
+                    send_error(ctx, uid, udata[USER_DATA_V1_TELEGRAM_USERNAME], udata[USER_DATA_V1_INTRA_LOGIN],
+                               'Can\'t send inactivity notification.', ex)
+            except Exception as ex:
+                send_error(ctx, uid, udata[USER_DATA_V1_TELEGRAM_USERNAME], udata[USER_DATA_V1_INTRA_LOGIN],
+                            'Can\'t send inactivity notification.', ex)
             ctx.bot.send_message(ADMIN_IDS[0], text='`[t#{0:<10}] {2:<8}` @{1} <= inactive'.format(
                 uid,
                 udata.get(USER_DATA_V1_TELEGRAM_USERNAME, '???').replace('_', '\\_'),
