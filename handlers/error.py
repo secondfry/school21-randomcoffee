@@ -19,7 +19,7 @@ def handle_common_block_errors(ctx: CallbackContext, uid: int, ex: TelegramError
 
     udata = ctx.dispatcher.user_data[uid]
 
-    ctx.bot.send_message(ADMIN_IDS[0], text='`[t#{0:<10}] {2:<8}` @{1} <= removed due to exception {}'.format(
+    ctx.bot.send_message(ADMIN_IDS[0], text='`[t#{0:<10}] {2:<8}` @{1} <= removed due to exception {3}'.format(
         uid,
         udata.get(USER_DATA_V1_TELEGRAM_USERNAME, '???').replace('_', '\\_'),
         udata[USER_DATA_V1_INTRA_LOGIN],
