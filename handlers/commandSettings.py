@@ -4,10 +4,12 @@ from config.constants import (
     CALLBACK_ACTIVE_YES,
     CALLBACK_CAMPUS_KAZAN,
     CALLBACK_CAMPUS_MOSCOW,
+    CALLBACK_CAMPUS_NOVOSIBIRSK,
     CALLBACK_CHOOSE_ACTIVE,
     CALLBACK_CHOOSE_INACTIVE,
     CALLBACK_CHOOSE_KAZAN,
     CALLBACK_CHOOSE_MOSCOW,
+    CALLBACK_CHOOSE_NOVOSIBIRSK,
     CALLBACK_CHOOSE_OFFLINE,
     CALLBACK_CHOOSE_ONLINE,
     CALLBACK_ONLINE_NO,
@@ -26,11 +28,19 @@ async def settings_choose_campus(ctx: telegram_ext.CallbackContext, id: int) -> 
                 get_campus_name(CALLBACK_CAMPUS_KAZAN),
                 callback_data=CALLBACK_CHOOSE_KAZAN,
             ),
+        ],
+        [
             telegram.InlineKeyboardButton(
                 get_campus_name(CALLBACK_CAMPUS_MOSCOW),
                 callback_data=CALLBACK_CHOOSE_MOSCOW,
             ),
-        ]
+        ],
+        [
+            telegram.InlineKeyboardButton(
+                get_campus_name(CALLBACK_CAMPUS_NOVOSIBIRSK),
+                callback_data=CALLBACK_CHOOSE_NOVOSIBIRSK,
+            ),
+        ],
     ]
 
     await ctx.bot.send_message(

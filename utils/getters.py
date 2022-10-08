@@ -5,6 +5,7 @@ from config.constants import (
     CALLBACK_ACTIVE_YES,
     CALLBACK_CAMPUS_KAZAN,
     CALLBACK_CAMPUS_MOSCOW,
+    CALLBACK_CAMPUS_NOVOSIBIRSK,
     CALLBACK_ONLINE_NO,
     CALLBACK_ONLINE_YES,
     KEY_MATCH_ACCEPTED,
@@ -15,9 +16,11 @@ from typings import TokenUser
 
 
 def get_campus_name(slug: str) -> str:
-    return {CALLBACK_CAMPUS_KAZAN: "Казань", CALLBACK_CAMPUS_MOSCOW: "Москва"}.get(
-        slug, "???"
-    )
+    return {
+        CALLBACK_CAMPUS_KAZAN: "Казань",
+        CALLBACK_CAMPUS_MOSCOW: "Москва",
+        CALLBACK_CAMPUS_NOVOSIBIRSK: "Новосибирск"
+    }.get(slug, "???")
 
 
 def get_online_status(slug: str) -> str:

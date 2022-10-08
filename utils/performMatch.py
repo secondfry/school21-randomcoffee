@@ -9,6 +9,7 @@ from config.constants import (
     CALLBACK_ACTIVE_YES,
     CALLBACK_CAMPUS_KAZAN,
     CALLBACK_CAMPUS_MOSCOW,
+    CALLBACK_CAMPUS_NOVOSIBIRSK,
     KEY_AUTHORIZED,
     KEY_MATCH_ACCEPTED,
     KEY_MATCH_NOTIFIED,
@@ -124,6 +125,7 @@ async def match_algo(ctx: telegram_ext.CallbackContext):
     buckets: Dict[str, Deque[int]] = {
         CALLBACK_CAMPUS_KAZAN: deque(),
         CALLBACK_CAMPUS_MOSCOW: deque(),
+        CALLBACK_CAMPUS_NOVOSIBIRSK: deque(),
         "online": deque(),
         "???": deque(),
     }
