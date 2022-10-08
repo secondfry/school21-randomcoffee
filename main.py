@@ -32,20 +32,6 @@ def main():
     persistence = telegram_ext.PicklePersistence(filepath="store.pickle")
     job_queue = telegram_ext.JobQueue()
 
-    # Initialize matcher
-    moment = datetime.now(timezone("Europe/Moscow")).replace(
-        hour=10, minute=0, second=0
-    )
-    moment += timedelta(days=(WEEKDAY_TUESDAY - moment.weekday()) % 7)
-    job_queue.run_repeating(perform_match, interval=timedelta(days=7), first=moment)
-
-    # Initialize re-matcher
-    moment = datetime.now(timezone("Europe/Moscow")).replace(
-        hour=10, minute=0, second=0
-    )
-    moment += timedelta(days=(WEEKDAY_WEDNESDAY - moment.weekday()) % 7)
-    job_queue.run_repeating(perform_rematch, interval=timedelta(days=7), first=moment)
-
     app = (
         telegram_ext.ApplicationBuilder()
         .token(TELEGRAM_TOKEN)
@@ -53,6 +39,20 @@ def main():
         .job_queue(job_queue)
         .build()
     )
+
+    # Initialize matcher
+    moment = datetime.now(timezone("Europe/Moscow")).replace(
+        hour=10, minute=0, second=0
+    )
+    moment += timedelta(days=(WEEKDAY_TUESDAY - moment.weekday()) % 7)
+    app.job_queue.run_repeating(perform_match, interval=timedelta(days=7), first=moment)
+
+    # Initialize re-matcher
+    moment = datetime.now(timezone("Europe/Moscow")).replace(
+        hour=10, minute=0, second=0
+    )
+    moment += timedelta(days=(WEEKDAY_WEDNESDAY - moment.weekday()) % 7)
+    app.job_queue.run_repeating(perform_rematch, interval=timedelta(days=7), first=moment)
 
     # FIXME(secondfry):
     # migrate(app.user_data)
