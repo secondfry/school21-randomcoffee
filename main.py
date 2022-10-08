@@ -29,7 +29,7 @@ logging.basicConfig(
 
 
 def main():
-    persistence = telegram_ext.PicklePersistence(filepath="store.pickle")
+    persistence = telegram_ext.PicklePersistence(filepath="database/store.pickle")
     job_queue = telegram_ext.JobQueue()
 
     app = (
