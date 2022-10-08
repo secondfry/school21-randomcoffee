@@ -4,12 +4,18 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
+black = "*"
 
 [packages]
-python-telegram-bot = "*"
+python-telegram-bot = "20"
 python-dotenv = "*"
 requests = "*"
 jsbeautifier = "*"
+requests-oauthlib = "*"
+pytz = "*"
 
 [requires]
-python_version = "3.8"
+python_version = "3.9"
+
+[pipenv]
+allow_prereleases = true

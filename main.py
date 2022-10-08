@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 
 import logging
-from datetime import timedelta, datetime
-from typing import List
+from datetime import datetime, timedelta
 
 from pytz import timezone
-from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, PicklePersistence
+from telegram import ext as telegram_ext
 
 from config.constants import WEEKDAY_TUESDAY, WEEKDAY_WEDNESDAY
 from config.env import TELEGRAM_TOKEN
@@ -21,64 +20,67 @@ from handlers.commandStart import handler_command_start
 from handlers.commandStop import handler_command_stop
 from handlers.error import handler_error
 from utils.migrate import migrate
-from utils.oauthClient import get_token_user_queue, GetTokenRequest
 from utils.performMatch import perform_match
 from utils.performRematch import perform_rematch
 
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+logging.basicConfig(
+    format="[%(asctime)s][%(name)s][%(levelname)s] %(message)s", level=logging.INFO
+)
 
 
 def main():
-    # Add persistence
-    persistence = PicklePersistence(filename='store.pickle')
-
-    # Create Updater
-    updater = Updater(TELEGRAM_TOKEN, persistence=persistence, use_context=True)
-
-    # Migrate if needed
-    migrate(updater.dispatcher.user_data)
-
-    # Initialize queue data and start fetching Intra each 0.5s
-    queue_data: List[GetTokenRequest] = []
-    updater.job_queue.run_repeating(get_token_user_queue, interval=0.5, context=queue_data)
+    persistence = telegram_ext.PicklePersistence(filepath="store.pickle")
+    job_queue = telegram_ext.JobQueue()
 
     # Initialize matcher
-    moment = datetime.now(timezone('Europe/Moscow')).replace(hour=10, minute=0, second=0)
-    moment += timedelta(days=(WEEKDAY_TUESDAY - moment.weekday()) % 7)
-    updater.job_queue.run_repeating(
-        perform_match,
-        interval=timedelta(days=7),
-        first=moment
+    moment = datetime.now(timezone("Europe/Moscow")).replace(
+        hour=10, minute=0, second=0
     )
+    moment += timedelta(days=(WEEKDAY_TUESDAY - moment.weekday()) % 7)
+    job_queue.run_repeating(perform_match, interval=timedelta(days=7), first=moment)
 
     # Initialize re-matcher
-    moment = datetime.now(timezone('Europe/Moscow')).replace(hour=10, minute=0, second=0)
-    moment += timedelta(days=(WEEKDAY_WEDNESDAY - moment.weekday()) % 7)
-    updater.job_queue.run_repeating(
-        perform_rematch,
-        interval=timedelta(days=7),
-        first=moment
+    moment = datetime.now(timezone("Europe/Moscow")).replace(
+        hour=10, minute=0, second=0
     )
+    moment += timedelta(days=(WEEKDAY_WEDNESDAY - moment.weekday()) % 7)
+    job_queue.run_repeating(perform_rematch, interval=timedelta(days=7), first=moment)
+
+    app = (
+        telegram_ext.ApplicationBuilder()
+        .token(TELEGRAM_TOKEN)
+        .persistence(persistence)
+        .job_queue(job_queue)
+        .build()
+    )
+
+    # FIXME(secondfry):
+    # migrate(app.user_data)
 
     # Handlers
-    updater.dispatcher.add_handler(
-        CommandHandler('start', lambda upd, ctx: handler_command_start(upd, ctx, queue_data))
+    app.add_handler(telegram_ext.CommandHandler("start", handler_command_start))
+    app.add_handler(telegram_ext.CommandHandler("info", handler_command_info))
+    app.add_handler(telegram_ext.CommandHandler("settings", handler_command_settings))
+    app.add_handler(telegram_ext.CommandHandler("stop", handler_command_stop))
+    app.add_handler(
+        telegram_ext.CommandHandler("forceactive", handler_command_forceactive)
     )
-    updater.dispatcher.add_handler(CommandHandler('info', handler_command_info))
-    updater.dispatcher.add_handler(CommandHandler('settings', handler_command_settings))
-    updater.dispatcher.add_handler(CommandHandler('stop', handler_command_stop))
-    updater.dispatcher.add_handler(CommandHandler('forceactive', handler_command_forceactive))
-    updater.dispatcher.add_handler(CommandHandler('forcematch', handler_command_forcematch))
-    updater.dispatcher.add_handler(CommandHandler('forcerematch', handler_command_forcerematch))
-    updater.dispatcher.add_handler(CommandHandler('forcenotify', handler_command_forcenotify))
-    updater.dispatcher.add_handler(CommandHandler('dump', handler_command_dump))
-    updater.dispatcher.add_handler(CallbackQueryHandler(handler_callback))
-    updater.dispatcher.add_error_handler(handler_error)
+    app.add_handler(
+        telegram_ext.CommandHandler("forcematch", handler_command_forcematch)
+    )
+    app.add_handler(
+        telegram_ext.CommandHandler("forcerematch", handler_command_forcerematch)
+    )
+    app.add_handler(
+        telegram_ext.CommandHandler("forcenotify", handler_command_forcenotify)
+    )
+    app.add_handler(telegram_ext.CommandHandler("dump", handler_command_dump))
+    app.add_handler(telegram_ext.CallbackQueryHandler(handler_callback))
+    app.add_error_handler(handler_error)
 
     # Go!
-    updater.start_polling()
-    updater.idle()
+    app.run_polling()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

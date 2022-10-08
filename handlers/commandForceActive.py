@@ -1,59 +1,84 @@
-from config.constants import (CALLBACK_ACTIVE_NO, CALLBACK_ACTIVE_YES,
-                              USER_DATA_V1_AUTHORIZED,
-                              USER_DATA_V1_INTRA_LOGIN,
-                              USER_DATA_V1_SETTINGS_ACTIVE,
-                              USER_DATA_V1_TELEGRAM_USERNAME)
+import telegram
+from config.constants import (
+    CALLBACK_ACTIVE_NO,
+    CALLBACK_ACTIVE_YES,
+    KEY_AUTHORIZED,
+    KEY_SETTINGS_ACTIVE,
+    KEY_TELEGRAM_USERNAME,
+    KEY_USER_ID,
+)
 from config.env import ADMIN_IDS
-from telegram import ParseMode, Update
-from telegram.error import TelegramError
-from telegram.ext import CallbackContext
+from telegram import constants as telegram_constants
+from telegram import error as telegram_error
+from telegram import ext as telegram_ext
 from utils.getters import get_accepted_sign
 
 from handlers.commandDump import chunks, perform_dump
 from handlers.error import handle_common_block_errors, send_error
 
 
-def handler_command_forceactive(upd: Update, ctx: CallbackContext):
+async def handler_command_forceactive(
+    upd: telegram.Update, ctx: telegram_ext.CallbackContext
+):
     if upd.effective_user.id not in ADMIN_IDS:
         return
 
     activated = []
 
-    for uid, udata in ctx.dispatcher.user_data.items():
+    for uid, udata in ctx.application.user_data.items():
         # Not authorized – skip
-        if not udata.get(USER_DATA_V1_AUTHORIZED, False):
-            udata[USER_DATA_V1_AUTHORIZED] = False
+        if not udata.get(KEY_AUTHORIZED, False):
+            udata[KEY_AUTHORIZED] = False
             continue
 
         # Active – skip
-        if udata.get(USER_DATA_V1_SETTINGS_ACTIVE, CALLBACK_ACTIVE_NO) == CALLBACK_ACTIVE_YES:
+        if udata.get(KEY_SETTINGS_ACTIVE, CALLBACK_ACTIVE_NO) == CALLBACK_ACTIVE_YES:
             continue
 
-        udata[USER_DATA_V1_SETTINGS_ACTIVE] = CALLBACK_ACTIVE_YES
-        activated.append('[{2}] {1:<8} [t#{0:<10}]'.format(
-            uid,
-            udata[USER_DATA_V1_INTRA_LOGIN],
-            get_accepted_sign(udata),
-        ))
+        udata[KEY_SETTINGS_ACTIVE] = CALLBACK_ACTIVE_YES
+        activated.append(
+            "[{2}] {1:<8} [t#{0:<10}]".format(
+                uid,
+                udata[KEY_USER_ID],
+                get_accepted_sign(udata),
+            )
+        )
 
         try:
-            ctx.bot.send_message(
+            await ctx.bot.send_message(
                 uid,
-                text='Привет!\n\n'
-                     'В качестве эксперимента на этой неделе все пользователи становятся активными! '
-                     'Ато вдруг ты хотел сходить на кофе, но опять забыл или еще чего ;).\n\n'
-                     'P.S. Ты можешь обратно стать неактивным при помощи настроек /settings')
-        except TelegramError as ex:
-            if not handle_common_block_errors(ctx, uid, ex):
-                send_error(ctx, uid, udata[USER_DATA_V1_TELEGRAM_USERNAME], udata[USER_DATA_V1_INTRA_LOGIN],
-                            'Can\'t send force active message.', ex)
+                text="Привет!\n\n"
+                "В качестве эксперимента на этой неделе все пользователи становятся активными! "
+                "Ато вдруг ты хотел сходить на кофе, но опять забыл или еще чего ;).\n\n"
+                "P.S. Ты можешь обратно стать неактивным при помощи настроек /settings",
+            )
+        except telegram_error.TelegramError as ex:
+            if not await handle_common_block_errors(ctx, uid, ex):
+                await send_error(
+                    ctx,
+                    uid,
+                    udata[KEY_TELEGRAM_USERNAME],
+                    udata[KEY_USER_ID],
+                    "Can't send force active message.",
+                    ex,
+                )
         except Exception as ex:
-            send_error(ctx, uid, udata[USER_DATA_V1_TELEGRAM_USERNAME], udata[USER_DATA_V1_INTRA_LOGIN],
-                            'Can\'t send force active message.', ex)
+            await send_error(
+                ctx,
+                uid,
+                udata[KEY_TELEGRAM_USERNAME],
+                udata[KEY_USER_ID],
+                "Can't send force active message.",
+                ex,
+            )
 
     activated.sort()
-    ctx.bot.send_message(ADMIN_IDS[0], text='Активированы')
+    await ctx.bot.send_message(ADMIN_IDS[0], text="Активированы")
     for chunk in chunks(activated, 30):
-        ctx.bot.send_message(ADMIN_IDS[0], text='```\n{}\n```'.format('\n'.join(chunk)), parse_mode=ParseMode.MARKDOWN)
+        await ctx.bot.send_message(
+            ADMIN_IDS[0],
+            text="```\n{}\n```".format("\n".join(chunk)),
+            parse_mode=telegram_constants.ParseMode.MARKDOWN,
+        )
 
-    perform_dump(ctx, ADMIN_IDS[0])
+    await perform_dump(ctx, ADMIN_IDS[0])

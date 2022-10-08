@@ -1,47 +1,47 @@
-from typing import Dict, Any
+from typing import Any, Dict
 
-from telegram import Update, ParseMode
-from telegram.ext import CallbackContext
-
+import telegram
 from config.constants import (
-    USER_DATA_V1_SETTINGS_CAMPUS,
-    USER_DATA_V1_SETTINGS_ONLINE,
-    USER_DATA_V1_INTRA_LOGIN,
-    USER_DATA_V1_INTRA_CAMPUS,
-    USER_DATA_V1_SETTINGS_ACTIVE,
-    USER_DATA_V1_AUTHORIZED,
-    USER_DATA_V1_TELEGRAM_USERNAME,
-    USER_DATA_V1_MATCH_WITH,
+    KEY_AUTHORIZED,
+    KEY_MATCH_WITH,
+    KEY_SETTINGS_ACTIVE,
+    KEY_SETTINGS_CAMPUS,
+    KEY_SETTINGS_ONLINE,
+    KEY_TELEGRAM_USERNAME,
+    KEY_USER_CAMPUS,
+    KEY_USER_ID,
 )
 from config.env import ADMIN_IDS
+from telegram import constants as telegram_constants
+from telegram import ext as telegram_ext
 from utils.lang import COMMAND_DENIED_NOT_AUTHORIZED
 
 
 def info(data: Dict[str, Any], is_admin_request: bool = False) -> str:
     fields = [
-        USER_DATA_V1_INTRA_LOGIN,
-        USER_DATA_V1_INTRA_CAMPUS,
-        USER_DATA_V1_SETTINGS_CAMPUS,
-        USER_DATA_V1_SETTINGS_ONLINE,
-        USER_DATA_V1_SETTINGS_ACTIVE,
-        USER_DATA_V1_TELEGRAM_USERNAME,
+        KEY_USER_ID,
+        KEY_USER_CAMPUS,
+        KEY_SETTINGS_CAMPUS,
+        KEY_SETTINGS_ONLINE,
+        KEY_SETTINGS_ACTIVE,
+        KEY_TELEGRAM_USERNAME,
     ]
 
     if is_admin_request:
-        fields.append(USER_DATA_V1_MATCH_WITH)
+        fields.append(KEY_MATCH_WITH)
 
-    return '\n'.join(['{}: {}'.format(x, data.get(x, '???')) for x in fields])
+    return "\n".join(["{}: {}".format(x, data.get(x, "???")) for x in fields])
 
 
-def info_other(upd: Update, ctx: CallbackContext) -> None:
+async def info_other(upd: telegram.Update, ctx: telegram_ext.CallbackContext) -> None:
     param = ctx.args[0]
     user = None
 
-    for uid, udata in ctx.dispatcher.user_data.items():
-        if USER_DATA_V1_INTRA_LOGIN not in udata:
+    for uid, udata in ctx.application.user_data.items():
+        if KEY_USER_ID not in udata:
             continue
 
-        if udata[USER_DATA_V1_INTRA_LOGIN] == param:
+        if udata[KEY_USER_ID] == param:
             user = udata
             break
 
@@ -50,31 +50,38 @@ def info_other(upd: Update, ctx: CallbackContext) -> None:
             break
 
     if not user:
-        ctx.bot.send_message(upd.effective_user.id, text='{} not found'.format(param))
+        await ctx.bot.send_message(
+            upd.effective_user.id, text="{} not found".format(param)
+        )
         return
 
     message = info(user, is_admin_request=True)
-    ctx.bot.send_message(
+    await ctx.bot.send_message(
         upd.effective_user.id,
-        text='```\ntelegram.id: {}\n{}\n```'.format(
-            uid,
-            message
-        ),
-        parse_mode=ParseMode.MARKDOWN
+        text="```\ntelegram.id: {}\n{}\n```".format(uid, message),
+        parse_mode=telegram_constants.ParseMode.MARKDOWN,
     )
 
 
-def info_self(upd: Update, ctx: CallbackContext) -> None:
+async def info_self(upd: telegram.Update, ctx: telegram_ext.CallbackContext) -> None:
     message = info(ctx.user_data)
-    ctx.bot.send_message(upd.effective_user.id, text='```\n{}\n```'.format(message), parse_mode=ParseMode.MARKDOWN)
+    await ctx.bot.send_message(
+        upd.effective_user.id,
+        text="```\n{}\n```".format(message),
+        parse_mode=telegram_constants.ParseMode.MARKDOWN,
+    )
 
 
-def handler_command_info(upd: Update, ctx: CallbackContext) -> None:
-    if not ctx.user_data.get(USER_DATA_V1_AUTHORIZED, False):
-        ctx.bot.send_message(upd.effective_user.id, text=COMMAND_DENIED_NOT_AUTHORIZED)
+async def handler_command_info(
+    upd: telegram.Update, ctx: telegram_ext.CallbackContext
+) -> None:
+    if not ctx.user_data.get(KEY_AUTHORIZED, False):
+        await ctx.bot.send_message(
+            upd.effective_user.id, text=COMMAND_DENIED_NOT_AUTHORIZED
+        )
         return
 
     if ctx.args and upd.effective_user.id in ADMIN_IDS:
-        return info_other(upd, ctx)
+        return await info_other(upd, ctx)
 
-    return info_self(upd, ctx)
+    return await info_self(upd, ctx)

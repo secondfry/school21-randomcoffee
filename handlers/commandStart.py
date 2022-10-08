@@ -1,94 +1,141 @@
-from typing import List
+from typing import Optional, Tuple, Union
 
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import CallbackContext
-
+import telegram
 from config.constants import (
-    TOKEN_REGEXP,
-    USER_DATA_V1_TELEGRAM_USERNAME,
-    USER_DATA_V1_AUTHORIZED,
-    USER_DATA_V1_INTRA_TOKEN,
+    AUTH_DATA_REGEXP,
+    KEY_AUTHORIZED,
+    KEY_OAUTH_STATE,
+    KEY_OAUTH_TOKEN,
+    KEY_TELEGRAM_USERNAME,
+    KEY_USER_ID,
 )
-from config.env import INTRA_CLIENT_ID, INTRA_REDIRECT_URI
-from typings import GetTokenRequest, Token
-from utils.lang import COMMAND_START_NOT_AUTHORIZED, COMMAND_DENIED_AUTHORIZED
-from utils.oauthClient import check_access_code
+from config.env import (
+    ENV,
+    OAUTH_CLIENT_ID,
+    OAUTH_CLIENT_SECRET,
+    OAUTH_ENDPOINT_AUTHENTICATE,
+    OAUTH_ENDPOINT_AUTHORIZE,
+    OAUTH_ENDPOINT_TOKEN,
+    OAUTH_REDIRECT_URI,
+)
+from oauthlib import common as oauthlib_common
+from requests_oauthlib import OAuth2Session
+from telegram import ext as telegram_ext
+from typings import Token, TokenUser
+from utils.lang import COMMAND_DENIED_AUTHORIZED, COMMAND_START_NOT_AUTHORIZED
+
+from handlers.commandSettings import settings_choose_campus
+
+oauth = OAuth2Session(OAUTH_CLIENT_ID, redirect_uri=OAUTH_REDIRECT_URI)
 
 
-def get_oauth_endpoint() -> str:
-    return 'https://api.intra.42.fr/oauth/authorize?client_id={}&redirect_uri={}&response_type=code'.format(
-        INTRA_CLIENT_ID,
-        INTRA_REDIRECT_URI
+async def do_reject(upd: telegram.Update) -> None:
+    await upd.message.reply_text(COMMAND_DENIED_AUTHORIZED)
+
+
+def check_if_auth_data(
+    ctx: telegram_ext.CallbackContext,
+) -> Tuple[bool, Union[None, str]]:
+    if not ctx.args:
+        return False, None
+
+    auth_data = ctx.args[0]
+    match = AUTH_DATA_REGEXP.match(auth_data)
+    if not match:
+        # TODO(secondfry): report to user that his input is wrong.
+        return False, None
+
+    code = auth_data[:40]
+    state = auth_data[40:]
+    if ENV == "production" and state != ctx.user_data[KEY_OAUTH_STATE]:
+        return False, None
+
+    return True, code
+
+
+def check_access_code(code: str) -> Optional[Token]:
+    token = oauth.fetch_token(
+        OAUTH_ENDPOINT_TOKEN,
+        code=code,
+        client_secret=OAUTH_CLIENT_SECRET,
     )
+    return token
 
 
-def do_reject(upd: Update, ctx: CallbackContext) -> None:
-    ctx.bot.send_message(upd.effective_user.id, text=COMMAND_DENIED_AUTHORIZED)
+def get_token_user() -> Optional[TokenUser]:
+    res = oauth.post(OAUTH_ENDPOINT_AUTHENTICATE)
+
+    if res.status_code == 200:
+        data: TokenUser = res.json()
+        return data
+
+    return None
 
 
-def check_if_token(context: CallbackContext) -> bool:
-    if not len(context.args):
-        return False
-
-    access_code = context.args[0]
-    match = TOKEN_REGEXP.match(access_code)
-    if match is None:
-        return False
-
-    return True
-
-
-def enqueue_get_token_user(queue_data: List[GetTokenRequest], id: int, token_success: Token):
-    queue_data.append({
-        'id': id,
-        'token': token_success
-    })
-
-
-def do_auth(upd: Update, ctx: CallbackContext, queue_data: List[GetTokenRequest]) -> None:
-    code = ctx.args[0]
-
+async def do_auth(
+    upd: telegram.Update,
+    ctx: telegram_ext.CallbackContext,
+    code: str,
+) -> None:
     token = check_access_code(code)
     if not token:
-        ctx.bot.send_message(
+        await ctx.bot.send_message(
             chat_id=upd.effective_chat.id,
-            text='Твой код – не код (либо интра лежит, тогда попробуй позднее).'
+            text="Твой код авторизации – не код авторизации (либо OAuth Provider лежит, тогда попробуй позднее).",
         )
         return
 
-    ctx.user_data[USER_DATA_V1_INTRA_TOKEN] = token
-    enqueue_get_token_user(queue_data, upd.effective_user.id, token)
-    ctx.bot.send_message(
-        chat_id=upd.effective_chat.id,
-        text='Ожидаю ответ Интры...'
+    ctx.user_data[KEY_OAUTH_TOKEN] = token
+    token_user = get_token_user()
+    if not token_user:
+        await ctx.bot.send_message(
+            chat_id=upd.effective_chat.id,
+            text="Либо OAuth Provider лежит, либо там какой-то багос. Напиши автору бота!",
+        )
+        return
+
+    ctx.user_data[KEY_AUTHORIZED] = True
+    ctx.user_data[KEY_USER_ID] = token_user["user_id"]
+
+    try:
+        await upd.message.reply_text("Привет, {}".format(token_user["login"]))
+    except:
+        # TODO actually handle exception
+        pass
+
+    await settings_choose_campus(ctx, upd.effective_user.id)
+
+
+async def do_greet(upd: telegram.Update, ctx: telegram_ext.CallbackContext) -> None:
+    state = oauthlib_common.generate_token(length=24)
+    ctx.user_data[KEY_OAUTH_STATE] = state
+    authorization_url, state = oauth.authorization_url(
+        OAUTH_ENDPOINT_AUTHORIZE, state=state
     )
 
-
-def do_greet(upd: Update, ctx: CallbackContext) -> None:
     kbd = [
         [
-            InlineKeyboardButton(
-                "Аутентификация",
-                url=get_oauth_endpoint()
-            ),
+            telegram.InlineKeyboardButton("Авторизация", url=authorization_url),
         ]
     ]
 
-    ctx.user_data[USER_DATA_V1_AUTHORIZED] = False
+    ctx.user_data[KEY_AUTHORIZED] = False
     username = upd.effective_chat.username
-    ctx.user_data[USER_DATA_V1_TELEGRAM_USERNAME] = username if username else '???'
-    ctx.bot.send_message(
-        chat_id=upd.effective_chat.id,
-        text=COMMAND_START_NOT_AUTHORIZED,
-        reply_markup=InlineKeyboardMarkup(kbd)
+    ctx.user_data[KEY_TELEGRAM_USERNAME] = username if username else "???"
+    await upd.message.reply_text(
+        COMMAND_START_NOT_AUTHORIZED, reply_markup=telegram.InlineKeyboardMarkup(kbd)
     )
 
 
-def handler_command_start(upd: Update, ctx: CallbackContext, queue_data: List[GetTokenRequest]) -> None:
-    if ctx.user_data.get(USER_DATA_V1_AUTHORIZED, False):
-        return do_reject(upd, ctx)
+async def handler_command_start(
+    upd: telegram.Update, ctx: telegram_ext.CallbackContext
+) -> None:
+    if ctx.user_data.get(KEY_AUTHORIZED, False):
+        return await do_reject(upd)
 
-    if check_if_token(ctx):
-        return do_auth(upd, ctx, queue_data)
+    status, code = check_if_auth_data(ctx)
+    if status:
+        return await do_auth(upd, ctx, code)
 
-    return do_greet(upd, ctx)
+    # TODO(secondfry): remove all inline buttons in chat
+    return await do_greet(upd, ctx)

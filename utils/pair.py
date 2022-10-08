@@ -1,26 +1,40 @@
-from telegram.ext import CallbackContext
-
-from config.constants import USER_DATA_V1_MATCH_ACCEPTED, USER_DATA_V1_INTRA_LOGIN, USER_DATA_V1_TELEGRAM_USERNAME
-
-
-def check_pair(context: CallbackContext, aid: int, bid: int):
-    return context.dispatcher.user_data.get(aid, {}).get(USER_DATA_V1_MATCH_ACCEPTED, False) \
-           and context.dispatcher.user_data.get(bid, {}).get(USER_DATA_V1_MATCH_ACCEPTED, False)
+from config.constants import KEY_MATCH_ACCEPTED, KEY_TELEGRAM_USERNAME, KEY_USER_ID
+from telegram import ext as telegram_ext
 
 
-def notify_user(context: CallbackContext, toid: int, peerlogin: str, peerhandle: str):
+def check_pair(ctx: telegram_ext.CallbackContext, aid: int, bid: int):
+    return ctx.application.user_data.get(aid, {}).get(
+        KEY_MATCH_ACCEPTED, False
+    ) and ctx.application.user_data.get(bid, {}).get(KEY_MATCH_ACCEPTED, False)
+
+
+async def notify_user(
+    context: telegram_ext.CallbackContext, toid: int, peerlogin: str, peerhandle: str
+):
     try:
-        context.bot.send_message(
+        await context.bot.send_message(
             toid,
-            text='И ты, и {} [tg: @{}] подтвердили встречу! :)'.format(peerlogin, peerhandle)
+            text="И ты, и {} [tg: @{}] подтвердили встречу! :)".format(
+                peerlogin, peerhandle
+            ),
         )
     except:
         # TODO actually handle exception
         pass
 
 
-def notify_pair(context: CallbackContext, aid: int, bid: int):
-    a = context.dispatcher.user_data.get(aid, {})
-    b = context.dispatcher.user_data.get(bid, {})
-    notify_user(context, aid, b.get(USER_DATA_V1_INTRA_LOGIN, '???'), b.get(USER_DATA_V1_TELEGRAM_USERNAME, '???'))
-    notify_user(context, bid, a.get(USER_DATA_V1_INTRA_LOGIN, '???'), a.get(USER_DATA_V1_TELEGRAM_USERNAME, '???'))
+async def notify_pair(ctx: telegram_ext.CallbackContext, aid: int, bid: int):
+    a = ctx.application.user_data.get(aid, {})
+    b = ctx.application.user_data.get(bid, {})
+    await notify_user(
+        ctx,
+        aid,
+        b.get(KEY_USER_ID, "???"),
+        b.get(KEY_TELEGRAM_USERNAME, "???"),
+    )
+    await notify_user(
+        ctx,
+        bid,
+        a.get(KEY_USER_ID, "???"),
+        a.get(KEY_TELEGRAM_USERNAME, "???"),
+    )

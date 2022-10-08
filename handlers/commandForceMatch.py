@@ -1,12 +1,13 @@
-from telegram import Update
-from telegram.ext import CallbackContext
-
+import telegram
 from config.env import ADMIN_IDS
+from telegram import ext as telegram_ext
 from utils.performMatch import perform_match
 
 
-def handler_command_forcematch(upd: Update, ctx: CallbackContext) -> None:
+async def handler_command_forcematch(
+    upd: telegram.Update, ctx: telegram_ext.CallbackContext
+) -> None:
     if upd.effective_user.id not in ADMIN_IDS:
         return
 
-    perform_match(ctx)
+    await perform_match(ctx)
