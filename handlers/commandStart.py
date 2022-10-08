@@ -20,6 +20,7 @@ from config.env import (
 )
 from oauthlib import common as oauthlib_common
 from requests_oauthlib import OAuth2Session
+from telegram import constants as telegram_constants
 from telegram import ext as telegram_ext
 from typings import Token, TokenUser
 from utils.lang import COMMAND_DENIED_AUTHORIZED, COMMAND_START_NOT_AUTHORIZED
@@ -33,7 +34,8 @@ async def do_reject(upd: telegram.Update) -> None:
     await upd.message.reply_text(COMMAND_DENIED_AUTHORIZED)
 
 
-def check_if_auth_data(
+async def check_if_auth_data(
+    upd: telegram.Update,
     ctx: telegram_ext.CallbackContext,
 ) -> Tuple[bool, Union[None, str]]:
     if not ctx.args:
@@ -42,12 +44,19 @@ def check_if_auth_data(
     auth_data = ctx.args[0]
     match = AUTH_DATA_REGEXP.match(auth_data)
     if not match:
-        # TODO(secondfry): report to user that his input is wrong.
+        await upd.message.reply_text(
+            "Присланные данные в deeplink не проходят валидацию.\n"
+            "Пройди авторизацию повторно, используя следующее сообщение."
+        )
         return False, None
 
     code = auth_data[:40]
     state = auth_data[40:]
     if ENV == "production" and state != ctx.user_data[KEY_OAUTH_STATE]:
+        await upd.message.reply_text(
+            "С момента начала авторизации у тебя изменился OAuth state.\n"
+            "Пройди авторизацию повторно, используя следующее сообщение."
+        )
         return False, None
 
     return True, code
@@ -123,17 +132,20 @@ async def do_greet(upd: telegram.Update, ctx: telegram_ext.CallbackContext) -> N
     username = upd.effective_chat.username
     ctx.user_data[KEY_TELEGRAM_USERNAME] = username if username else "???"
     await upd.message.reply_text(
-        COMMAND_START_NOT_AUTHORIZED, reply_markup=telegram.InlineKeyboardMarkup(kbd)
+        COMMAND_START_NOT_AUTHORIZED.format(authorization_url),
+        reply_markup=telegram.InlineKeyboardMarkup(kbd),
+        parse_mode=telegram_constants.ParseMode.MARKDOWN,
     )
 
 
 async def handler_command_start(
-    upd: telegram.Update, ctx: telegram_ext.CallbackContext
+    upd: telegram.Update,
+    ctx: telegram_ext.CallbackContext,
 ) -> None:
     if ctx.user_data.get(KEY_AUTHORIZED, False):
         return await do_reject(upd)
 
-    status, code = check_if_auth_data(ctx)
+    status, code = await check_if_auth_data(upd, ctx)
     if status:
         return await do_auth(upd, ctx, code)
 
