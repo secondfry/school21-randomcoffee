@@ -21,38 +21,41 @@ from utils.performMatch import match_algo
 
 async def prepare_users_for_rematch(ctx: telegram_ext.CallbackContext):
     for uid, udata in ctx.application.user_data.items():
+        # NOTE(secondfry): skip users who either never authorized
+        # or stopped the bot.
         if not udata.get(KEY_AUTHORIZED, False):
             udata[KEY_AUTHORIZED] = False
             continue
 
+        # NOTE(secondfry): skip inactive users.
         if udata.get(KEY_SETTINGS_ACTIVE, CALLBACK_ACTIVE_NO) != CALLBACK_ACTIVE_YES:
             udata[KEY_SETTINGS_ACTIVE] = CALLBACK_ACTIVE_NO
             continue
 
+        # NOTE(secondfry): skip users who either not matched yet
+        # or already accepted.
         bid = udata.get(KEY_MATCH_WITH, None)
-        if bid and not udata.get(KEY_MATCH_ACCEPTED, False):
-            bdata = ctx.application.user_data.get(bid, {})
-            if bdata is not None and bdata.get(KEY_MATCH_ACCEPTED, False):
-                bdata[KEY_MATCH_ACCEPTED] = False
-                bdata[KEY_MATCH_NOTIFIED] = False
-                bdata[KEY_MATCH_WITH] = None
-                try:
-                    await ctx.bot.send_message(
-                        bid,
-                        text="К сожалению, твой пир на случайный кофе не подтвердил встречу...\n"
-                        "Ищем нового!",
-                    )
-                except telegram_error.TelegramError as ex:
-                    if not handle_common_block_errors(ctx, bid, ex):
-                        await send_error(
-                            ctx,
-                            bid,
-                            bdata[KEY_TELEGRAM_USERNAME],
-                            bdata[KEY_USER_ID],
-                            "Can't send apology.",
-                            ex,
-                        )
-                except Exception as ex:
+        if not bid or udata.get(KEY_MATCH_ACCEPTED, False):
+            continue
+
+        # NOTE(secondfry): here we have uid/udata who did not accept the match.
+        # Also we have bid of the match.
+
+        bdata = ctx.application.user_data.get(bid, {})
+        if bdata is not None and bdata.get(KEY_MATCH_ACCEPTED, False):
+            # NOTE(secondfry): bid/bdata has accepted the match.
+            # Apology is required.
+            bdata[KEY_MATCH_ACCEPTED] = False
+            bdata[KEY_MATCH_NOTIFIED] = False
+            bdata[KEY_MATCH_WITH] = None
+            try:
+                await ctx.bot.send_message(
+                    bid,
+                    text="К сожалению, твой пир на случайный кофе не подтвердил встречу...\n"
+                    "Ищем нового!",
+                )
+            except telegram_error.TelegramError as ex:
+                if not handle_common_block_errors(ctx, bid, ex):
                     await send_error(
                         ctx,
                         bid,
@@ -61,38 +64,38 @@ async def prepare_users_for_rematch(ctx: telegram_ext.CallbackContext):
                         "Can't send apology.",
                         ex,
                     )
-                await ctx.bot.send_message(
-                    ADMIN_IDS[0],
-                    text="`[t#{0:<10}] {2:<8}` @{1} <= apology".format(
-                        bid,
-                        bdata.get(KEY_TELEGRAM_USERNAME, "???").replace("_", "\\_"),
-                        bdata[KEY_USER_ID],
-                    ),
-                    parse_mode=telegram_constants.ParseMode.MARKDOWN,
-                )
-
-            udata[KEY_SETTINGS_ACTIVE] = CALLBACK_ACTIVE_NO
-            udata[KEY_MATCH_ACCEPTED] = False
-            udata[KEY_MATCH_NOTIFIED] = False
-            udata[KEY_MATCH_WITH] = None
-            try:
-                await ctx.bot.send_message(
-                    uid,
-                    text="К сожалению, ты не подтвердил встречу... "
-                    "Автоматически выставляю тебе статус inactive.\n"
-                    "Ждем тебя, когда вновь появится время на случайный кофе!",
-                )
-            except telegram_error.TelegramError as ex:
-                if not handle_common_block_errors(ctx, uid, ex):
-                    await send_error(
-                        ctx,
-                        uid,
-                        udata[KEY_TELEGRAM_USERNAME],
-                        udata[KEY_USER_ID],
-                        "Can't send inactivity notification.",
-                        ex,
-                    )
             except Exception as ex:
+                await send_error(
+                    ctx,
+                    bid,
+                    bdata[KEY_TELEGRAM_USERNAME],
+                    bdata[KEY_USER_ID],
+                    "Can't send apology.",
+                    ex,
+                )
+            await ctx.bot.send_message(
+                ADMIN_IDS[0],
+                text="`[t#{0:<10}] {2:<8}` @{1} <= apology".format(
+                    bid,
+                    bdata.get(KEY_TELEGRAM_USERNAME, "???").replace("_", "\\_"),
+                    bdata[KEY_USER_ID],
+                ),
+                parse_mode=telegram_constants.ParseMode.MARKDOWN,
+            )
+
+        udata[KEY_SETTINGS_ACTIVE] = CALLBACK_ACTIVE_NO
+        udata[KEY_MATCH_ACCEPTED] = False
+        udata[KEY_MATCH_NOTIFIED] = False
+        udata[KEY_MATCH_WITH] = None
+        try:
+            await ctx.bot.send_message(
+                uid,
+                text="К сожалению, ты не подтвердил встречу... "
+                "Автоматически выставляю тебе статус inactive.\n"
+                "Ждем тебя, когда вновь появится время на случайный кофе!",
+            )
+        except telegram_error.TelegramError as ex:
+            if not handle_common_block_errors(ctx, uid, ex):
                 await send_error(
                     ctx,
                     uid,
@@ -101,15 +104,24 @@ async def prepare_users_for_rematch(ctx: telegram_ext.CallbackContext):
                     "Can't send inactivity notification.",
                     ex,
                 )
-            await ctx.bot.send_message(
-                ADMIN_IDS[0],
-                text="`[t#{0:<10}] {2:<8}` @{1} <= inactive".format(
-                    uid,
-                    udata.get(KEY_TELEGRAM_USERNAME, "???").replace("_", "\\_"),
-                    udata[KEY_USER_ID],
-                ),
-                parse_mode=telegram_constants.ParseMode.MARKDOWN,
+        except Exception as ex:
+            await send_error(
+                ctx,
+                uid,
+                udata[KEY_TELEGRAM_USERNAME],
+                udata[KEY_USER_ID],
+                "Can't send inactivity notification.",
+                ex,
             )
+        await ctx.bot.send_message(
+            ADMIN_IDS[0],
+            text="`[t#{0:<10}] {2:<8}` @{1} <= inactive".format(
+                uid,
+                udata.get(KEY_TELEGRAM_USERNAME, "???").replace("_", "\\_"),
+                udata[KEY_USER_ID],
+            ),
+            parse_mode=telegram_constants.ParseMode.MARKDOWN,
+        )
 
 
 async def perform_rematch(ctx: telegram_ext.CallbackContext) -> None:
