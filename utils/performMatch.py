@@ -1,7 +1,7 @@
 import random
 import secrets
 from collections import deque
-from typing import Deque, Dict, Optional
+from typing import Callable, Deque, Dict, Optional
 
 import telegram
 from config.constants import (
@@ -26,9 +26,31 @@ from telegram import error as telegram_error
 from telegram import ext as telegram_ext
 
 from utils.getters import get_bucket
+from utils.lang import TEXT_INACTIVE
+
+
+async def safe_message(
+    ctx: telegram_ext.CallbackContext,
+    uid: int,
+    err: Optional[str] = None,
+    cb: Callable = None,
+    *args,
+    **kwargs
+):
+    try:
+        await ctx.bot.send_message(uid, *args, **kwargs)
+        if cb:
+            cb()
+    except telegram_error.TelegramError as ex:
+        if not handle_common_block_errors(ctx, uid, ex):
+            await send_error(ctx, uid, err, ex)
+    except Exception as ex:
+        await send_error(ctx, uid, err, ex)
 
 
 async def prepare_users_for_match(ctx: telegram_ext.CallbackContext):
+    msg_queue = []
+
     for uid, udata in ctx.application.user_data.items():
         udata[KEY_MATCH_ACCEPTED] = False
         udata[KEY_MATCH_NOTIFIED] = False
@@ -40,33 +62,13 @@ async def prepare_users_for_match(ctx: telegram_ext.CallbackContext):
 
         if udata.get(KEY_SETTINGS_ACTIVE, CALLBACK_ACTIVE_NO) != CALLBACK_ACTIVE_YES:
             udata[KEY_SETTINGS_ACTIVE] = CALLBACK_ACTIVE_NO
-            try:
-                await ctx.bot.send_message(
-                    uid,
-                    text="На этой неделе ты выбрал не идти на случайный кофе.\n"
-                    "Если передумаешь и изменишь настройки, "
-                    "то завтра тебе должно будет подобрать пару.",
-                )
-            except telegram_error.TelegramError as ex:
-                if not handle_common_block_errors(ctx, uid, ex):
-                    await send_error(
-                        ctx,
-                        uid,
-                        udata[KEY_TELEGRAM_USERNAME],
-                        udata[KEY_USER_ID],
-                        "Can't send inactivity notice.",
-                        ex,
-                    )
-            except Exception as ex:
-                await send_error(
-                    ctx,
-                    uid,
-                    udata[KEY_TELEGRAM_USERNAME],
-                    udata[KEY_USER_ID],
-                    "Can't send inactivity notice.",
-                    ex,
-                )
+            msg_queue.push(uid)
             continue
+
+    for uid in msg_queue:
+        await safe_message(
+            ctx, uid, text=TEXT_INACTIVE, err="Can't send inactivity notice."
+        )
 
 
 async def send_match_message(
@@ -80,18 +82,19 @@ async def send_match_message(
         ]
     ]
 
-    try:
-        await ctx.bot.send_message(
-            fromid,
-            text="Твой случайный кофе на этой неделе...\nC пиром {} [tg: @{}]!\n\nПодтверди получение сообщения:".format(
-                tologin, tohandle
-            ),
-            reply_markup=telegram.InlineKeyboardMarkup(kbd),
-        )
+    def cb():
         ctx.application.user_data[fromid][KEY_MATCH_NOTIFIED] = True
-    except:
-        # TODO actually handle exception
-        pass
+
+    await safe_message(
+        ctx,
+        fromid,
+        err="Can't send match message.",
+        cb=cb,
+        text="Твой случайный кофе на этой неделе...\nC пиром {} [tg: @{}]!\n\nПодтверди получение сообщения:".format(
+            tologin, tohandle
+        ),
+        reply_markup=telegram.InlineKeyboardMarkup(kbd),
+    )
 
 
 async def match(
@@ -167,7 +170,8 @@ async def match_algo(ctx: telegram_ext.CallbackContext):
     for bucket, uids in buckets.items():
         if bucket == "???":
             if uids:
-                await ctx.bot.send_message(
+                await safe_message(
+                    ctx,
                     ADMIN_IDS[0],
                     text="For some reason ??? bucket has #{} accounts in it".format(
                         len(uids)

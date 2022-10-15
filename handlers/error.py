@@ -20,16 +20,20 @@ async def handle_common_block_errors(
 
     udata = ctx.application.user_data[uid]
 
-    await ctx.bot.send_message(
-        ADMIN_IDS[0],
-        text="`[t#{0:<10}] {2:<8}` @{1} <= removed due to exception {3}".format(
-            uid,
-            udata.get(KEY_TELEGRAM_USERNAME, "???").replace("_", "\\_"),
-            udata[KEY_USER_ID],
-            str(ex),
-        ),
-        parse_mode=telegram_constants.ParseMode.MARKDOWN,
-    )
+    try:
+        await ctx.bot.send_message(
+            ADMIN_IDS[0],
+            text="`[t#{0:<10}] {2:<8}` @{1} <= removed due to exception {3}".format(
+                uid,
+                udata.get(KEY_TELEGRAM_USERNAME, "???").replace("_", "\\_"),
+                udata[KEY_USER_ID],
+                str(ex),
+            ),
+            parse_mode=telegram_constants.ParseMode.MARKDOWN,
+        )
+    except Exception as e:
+        logging.error("Could not send error report!\n%s", e)
+
     udata.clear()
     udata[KEY_AUTHORIZED] = False
     return True
@@ -37,37 +41,39 @@ async def handle_common_block_errors(
 
 async def send_error(
     ctx: telegram_ext.CallbackContext,
-    uid: Union[int, str],
-    telegram_username: str,
-    intra_login: str,
-    message: str,
+    uid: Union[int, None],
+    message: Optional[str],
     ex: Exception,
 ):
-    await ctx.bot.send_message(
-        ADMIN_IDS[0],
-        text="Exception with [tid#{}][tus#{}] {}.\n{}\n{}".format(
-            uid,
-            telegram_username,
-            intra_login,
-            message,
-            ex,
-        ),
-    )
+    udata = ctx.application.user_data.get(uid, {})
+    telegram_username = udata.get(KEY_TELEGRAM_USERNAME, "???")
+    intra_login = udata.get(KEY_USER_ID, "???")
+
+    if not message:
+        message = "Unspecified error."
+
+    try:
+        await ctx.bot.send_message(
+            ADMIN_IDS[0],
+            text="Exception with [tid#{}][tus#{}] {}.\n{}\n{}".format(
+                uid,
+                telegram_username,
+                intra_login,
+                message,
+                ex,
+            ),
+        )
+    except Exception as e:
+        logging.error("Could not send error report!\n%s", e)
 
 
 async def handler_error(
     upd: Optional[telegram.Update], ctx: telegram_ext.CallbackContext
 ):
-    try:
-        await send_error(
-            ctx,
-            upd.effective_user.id if upd else "???",
-            ctx.user_data.get(KEY_TELEGRAM_USERNAME, "???") if ctx.user_data else "???",
-            ctx.user_data.get(KEY_USER_ID, "???") if ctx.user_data else "???",
-            "Root update: {}".format(upd),
-            ctx.error,
-        )
-    except Exception as e:
-        logging.error("Could not send error report!\n%s", e)
-
+    await send_error(
+        ctx,
+        upd.effective_user.id if upd and upd.effective_user else None,
+        "Root update: {}".format(upd),
+        ctx.error,
+    )
     logging.error('telegram.Update "%s" caused error "%s"', upd, ctx.error)
