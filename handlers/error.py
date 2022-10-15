@@ -1,4 +1,5 @@
 import logging
+from typing import Optional, Union
 
 import telegram
 from config.constants import KEY_AUTHORIZED, KEY_TELEGRAM_USERNAME, KEY_USER_ID
@@ -36,7 +37,7 @@ async def handle_common_block_errors(
 
 async def send_error(
     ctx: telegram_ext.CallbackContext,
-    uid: int,
+    uid: Union[int, str],
     telegram_username: str,
     intra_login: str,
     message: str,
@@ -54,10 +55,10 @@ async def send_error(
     )
 
 
-async def handler_error(upd: telegram.Update, ctx: telegram_ext.CallbackContext):
+async def handler_error(upd: Optional[telegram.Update], ctx: telegram_ext.CallbackContext):
     await send_error(
         ctx,
-        upd.effective_user.id,
+        upd.effective_user.id if upd else '???',
         ctx.user_data.get(KEY_TELEGRAM_USERNAME, "???"),
         ctx.user_data.get(KEY_USER_ID, "???"),
         "Root update: {}".format(upd),
