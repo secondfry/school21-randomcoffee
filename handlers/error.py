@@ -59,9 +59,9 @@ async def handler_error(upd: Optional[telegram.Update], ctx: telegram_ext.Callba
     await send_error(
         ctx,
         upd.effective_user.id if upd else '???',
-        ctx.user_data.get(KEY_TELEGRAM_USERNAME, "???"),
-        ctx.user_data.get(KEY_USER_ID, "???"),
+        ctx.user_data.get(KEY_TELEGRAM_USERNAME, "???") if ctx.user_data else '???',
+        ctx.user_data.get(KEY_USER_ID, "???") if ctx.user_data else '???',
         "Root update: {}".format(upd),
         ctx.error,
     )
-    logging.warning('telegram.Update "%s" caused error "%s"', upd, ctx.error)
+    logging.error('telegram.Update "%s" caused error "%s"', upd, ctx.error)
