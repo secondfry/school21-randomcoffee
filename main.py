@@ -9,6 +9,7 @@ from telegram import ext as telegram_ext
 from config.constants import WEEKDAY_TUESDAY, WEEKDAY_WEDNESDAY
 from config.env import TELEGRAM_TOKEN
 from handlers.callback import handler_callback
+from handlers.commandActive import handler_command_active
 from handlers.commandDump import handler_command_dump
 from handlers.commandForceActive import handler_command_forceactive
 from handlers.commandForceMatch import handler_command_forcematch
@@ -60,10 +61,8 @@ def main():
     app.job_queue.run_once(migrate, when=0)
 
     # Handlers
-    app.add_handler(telegram_ext.CommandHandler("start", handler_command_start))
-    app.add_handler(telegram_ext.CommandHandler("info", handler_command_info))
-    app.add_handler(telegram_ext.CommandHandler("settings", handler_command_settings))
-    app.add_handler(telegram_ext.CommandHandler("stop", handler_command_stop))
+    app.add_handler(telegram_ext.CommandHandler("active", handler_command_active))
+    app.add_handler(telegram_ext.CommandHandler("dump", handler_command_dump))
     app.add_handler(
         telegram_ext.CommandHandler("forceactive", handler_command_forceactive)
     )
@@ -71,12 +70,15 @@ def main():
         telegram_ext.CommandHandler("forcematch", handler_command_forcematch)
     )
     app.add_handler(
-        telegram_ext.CommandHandler("forcerematch", handler_command_forcerematch)
-    )
-    app.add_handler(
         telegram_ext.CommandHandler("forcenotify", handler_command_forcenotify)
     )
-    app.add_handler(telegram_ext.CommandHandler("dump", handler_command_dump))
+    app.add_handler(
+        telegram_ext.CommandHandler("forcerematch", handler_command_forcerematch)
+    )
+    app.add_handler(telegram_ext.CommandHandler("info", handler_command_info))
+    app.add_handler(telegram_ext.CommandHandler("settings", handler_command_settings))
+    app.add_handler(telegram_ext.CommandHandler("start", handler_command_start))
+    app.add_handler(telegram_ext.CommandHandler("stop", handler_command_stop))
     app.add_handler(telegram_ext.CallbackQueryHandler(handler_callback))
     app.add_error_handler(handler_error)
 
