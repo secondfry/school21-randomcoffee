@@ -63,7 +63,7 @@ async def prepare_users_for_match(ctx: telegram_ext.CallbackContext):
 
         if udata.get(KEY_SETTINGS_ACTIVE, CALLBACK_ACTIVE_NO) != CALLBACK_ACTIVE_YES:
             udata[KEY_SETTINGS_ACTIVE] = CALLBACK_ACTIVE_NO
-            msg_queue.push(uid)
+            msg_queue.append(uid)
             continue
 
     for uid in msg_queue:
