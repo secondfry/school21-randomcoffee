@@ -3,7 +3,6 @@ from typing import Any, Dict
 import telegram
 from config.constants import (
     KEY_AUTHORIZED,
-    KEY_MATCH_WITH,
     KEY_SETTINGS_ACTIVE,
     KEY_SETTINGS_CAMPUS,
     KEY_SETTINGS_ONLINE,
@@ -18,17 +17,18 @@ from utils.lang import COMMAND_DENIED_NOT_AUTHORIZED
 
 
 def info(data: Dict[str, Any], is_admin_request: bool = False) -> str:
-    fields = [
-        KEY_USER_ID,
-        KEY_USER_CAMPUS,
-        KEY_SETTINGS_CAMPUS,
-        KEY_SETTINGS_ONLINE,
-        KEY_SETTINGS_ACTIVE,
-        KEY_TELEGRAM_USERNAME,
-    ]
-
     if is_admin_request:
-        fields.append(KEY_MATCH_WITH)
+        fields = list(data.keys())
+        fields.sort()
+    else:
+        fields = [
+            KEY_USER_ID,
+            KEY_USER_CAMPUS,
+            KEY_SETTINGS_CAMPUS,
+            KEY_SETTINGS_ONLINE,
+            KEY_SETTINGS_ACTIVE,
+            KEY_TELEGRAM_USERNAME,
+        ]
 
     return "\n".join(["{}: {}".format(x, data.get(x, "???")) for x in fields])
 
@@ -50,24 +50,20 @@ async def info_other(upd: telegram.Update, ctx: telegram_ext.CallbackContext) ->
             break
 
     if not user:
-        await ctx.bot.send_message(
-            upd.effective_user.id, text="{} not found".format(param)
-        )
+        await upd.message.reply_text("{} not found".format(param))
         return
 
     message = info(user, is_admin_request=True)
-    await ctx.bot.send_message(
-        upd.effective_user.id,
-        text="```\ntelegram.id: {}\n{}\n```".format(uid, message),
+    await upd.message.reply_text(
+        "```\ntelegram.id: {}\n{}\n```".format(uid, message),
         parse_mode=telegram_constants.ParseMode.MARKDOWN,
     )
 
 
 async def info_self(upd: telegram.Update, ctx: telegram_ext.CallbackContext) -> None:
     message = info(ctx.user_data)
-    await ctx.bot.send_message(
-        upd.effective_user.id,
-        text="```\n{}\n```".format(message),
+    await upd.message.reply_text(
+        "```\n{}\n```".format(message),
         parse_mode=telegram_constants.ParseMode.MARKDOWN,
     )
 
@@ -76,9 +72,7 @@ async def handler_command_info(
     upd: telegram.Update, ctx: telegram_ext.CallbackContext
 ) -> None:
     if not ctx.user_data.get(KEY_AUTHORIZED, False):
-        await ctx.bot.send_message(
-            upd.effective_user.id, text=COMMAND_DENIED_NOT_AUTHORIZED
-        )
+        await upd.message.reply_text(COMMAND_DENIED_NOT_AUTHORIZED)
         return
 
     if ctx.args and upd.effective_user.id in ADMIN_IDS:
