@@ -88,30 +88,23 @@ async def do_auth(
 ) -> None:
     token = check_access_code(code)
     if not token:
-        await ctx.bot.send_message(
-            chat_id=upd.effective_chat.id,
-            text="Твой код авторизации – не код авторизации (либо OAuth Provider лежит, тогда попробуй позднее).",
+        await upd.message.reply_text(
+            "Твой код авторизации – не код авторизации (либо OAuth Provider лежит, тогда попробуй позднее)."
         )
         return
 
     ctx.user_data[KEY_OAUTH_TOKEN] = token
     token_user = get_token_user()
     if not token_user:
-        await ctx.bot.send_message(
-            chat_id=upd.effective_chat.id,
-            text="Либо OAuth Provider лежит, либо там какой-то багос. Напиши автору бота!",
+        await upd.message.reply_text(
+            "Либо OAuth Provider лежит, либо там какой-то багос. Напиши автору бота!"
         )
         return
 
     ctx.user_data[KEY_AUTHORIZED] = True
     ctx.user_data[KEY_USER_ID] = token_user["user_id"]
 
-    try:
-        await upd.message.reply_text("Привет, {}".format(token_user["login"]))
-    except:
-        # TODO actually handle exception
-        pass
-
+    await upd.message.reply_text("Привет, {}".format(token_user["login"]))
     await settings_choose_campus(ctx, upd.effective_user.id)
 
 
