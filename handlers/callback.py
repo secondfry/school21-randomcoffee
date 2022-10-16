@@ -2,6 +2,10 @@ import telegram
 from config.constants import (
     CALLBACK_ACTION_MATCH,
     CALLBACK_ACTION_SETTING,
+    CALLBACK_STEP_ACCEPT,
+    CALLBACK_STEP_ACTIVE,
+    CALLBACK_STEP_CAMPUS,
+    CALLBACK_STEP_ONLINE,
     KEY_AUTHORIZED,
     KEY_MATCH_ACCEPTED,
     KEY_MATCH_WITH,
@@ -26,18 +30,15 @@ from handlers.commandSettings import (
 )
 
 
+def make_accepted_keyboard(text: str) -> list[list[telegram.InlineKeyboardButton]]:
+    return [[telegram.InlineKeyboardButton("✅ {}".format(text), callback_data="none")]]
+
+
 async def set_campus(
     upd: telegram.Update, ctx: telegram_ext.CallbackContext, campus: str
 ):
     ctx.user_data[KEY_SETTINGS_CAMPUS] = campus
-
-    kbd = [
-        [
-            telegram.InlineKeyboardButton(
-                "✅ {}".format(get_campus_name(campus)), callback_data="none"
-            )
-        ]
-    ]
+    kbd = make_accepted_keyboard(get_campus_name(campus))
     await upd.callback_query.edit_message_reply_markup(
         telegram.InlineKeyboardMarkup(kbd)
     )
@@ -49,14 +50,7 @@ async def set_online(
     upd: telegram.Update, ctx: telegram_ext.CallbackContext, online: str
 ):
     ctx.user_data[KEY_SETTINGS_ONLINE] = online
-
-    kbd = [
-        [
-            telegram.InlineKeyboardButton(
-                "✅ {}".format(get_online_status(online)), callback_data="none"
-            )
-        ]
-    ]
+    kbd = make_accepted_keyboard(get_online_status(online))
     await upd.callback_query.edit_message_reply_markup(
         telegram.InlineKeyboardMarkup(kbd)
     )
@@ -68,14 +62,7 @@ async def set_active(
     upd: telegram.Update, ctx: telegram_ext.CallbackContext, active: str
 ):
     ctx.user_data[KEY_SETTINGS_ACTIVE] = active
-
-    kbd = [
-        [
-            telegram.InlineKeyboardButton(
-                "✅ {}".format(get_active_status(active)), callback_data="none"
-            )
-        ]
-    ]
+    kbd = make_accepted_keyboard(get_active_status(active))
     await upd.callback_query.edit_message_reply_markup(
         telegram.InlineKeyboardMarkup(kbd)
     )
@@ -85,14 +72,7 @@ async def set_active(
 
 async def set_accepted(upd: telegram.Update, ctx: telegram_ext.CallbackContext):
     ctx.user_data[KEY_MATCH_ACCEPTED] = True
-
-    kbd = [
-        [
-            telegram.InlineKeyboardButton(
-                "✅ {}".format(get_accepted()), callback_data="none"
-            )
-        ]
-    ]
+    kbd = make_accepted_keyboard(get_accepted())
     await upd.callback_query.edit_message_reply_markup(
         telegram.InlineKeyboardMarkup(kbd)
     )
@@ -115,13 +95,15 @@ async def handler_callback(
     req = query.data.split("-")
 
     if req[0] == CALLBACK_ACTION_SETTING:
-        await {"campus": set_campus, "online": set_online, "active": set_active,}.get(
-            req[1], lambda: None
-        )(upd, ctx, req[2])
+        await {
+            CALLBACK_STEP_CAMPUS: set_campus,
+            CALLBACK_STEP_ONLINE: set_online,
+            CALLBACK_STEP_ACTIVE: set_active,
+        }.get(req[1], lambda: None)(upd, ctx, req[2])
 
         return
 
     if req[0] == CALLBACK_ACTION_MATCH:
-        await {"accept": set_accepted}.get(req[1], lambda: None)(upd, ctx)
+        await {CALLBACK_STEP_ACCEPT: set_accepted}.get(req[1], lambda: None)(upd, ctx)
 
         return
