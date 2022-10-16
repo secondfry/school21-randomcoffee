@@ -25,22 +25,15 @@ async def settings_choose_campus(ctx: telegram_ext.CallbackContext, id: int) -> 
     kbd = [
         [
             telegram.InlineKeyboardButton(
-                get_campus_name(CALLBACK_CAMPUS_KAZAN),
-                callback_data=CALLBACK_CHOOSE_KAZAN,
+                get_campus_name(campus_slug),
+                callback_data=callback_data,
             ),
-        ],
-        [
-            telegram.InlineKeyboardButton(
-                get_campus_name(CALLBACK_CAMPUS_MOSCOW),
-                callback_data=CALLBACK_CHOOSE_MOSCOW,
-            ),
-        ],
-        [
-            telegram.InlineKeyboardButton(
-                get_campus_name(CALLBACK_CAMPUS_NOVOSIBIRSK),
-                callback_data=CALLBACK_CHOOSE_NOVOSIBIRSK,
-            ),
-        ],
+        ]
+        for [campus_slug, callback_data] in [
+            [CALLBACK_CAMPUS_KAZAN, CALLBACK_CHOOSE_KAZAN],
+            [CALLBACK_CAMPUS_MOSCOW, CALLBACK_CHOOSE_MOSCOW],
+            [CALLBACK_CAMPUS_NOVOSIBIRSK, CALLBACK_CHOOSE_NOVOSIBIRSK],
+        ]
     ]
 
     await ctx.bot.send_message(
@@ -54,29 +47,21 @@ async def settings_choose_online(ctx: telegram_ext.CallbackContext, id: int) -> 
     kbd = [
         [
             telegram.InlineKeyboardButton(
-                get_online_status(CALLBACK_ONLINE_YES),
-                callback_data=CALLBACK_CHOOSE_ONLINE,
+                get_online_status(online_slug),
+                callback_data=callback_data,
             ),
-        ],
-        [
-            telegram.InlineKeyboardButton(
-                get_online_status(CALLBACK_ONLINE_NO),
-                callback_data=CALLBACK_CHOOSE_OFFLINE,
-            ),
-        ],
+        ]
+        for [online_slug, callback_data] in [
+            [CALLBACK_ONLINE_YES, CALLBACK_CHOOSE_ONLINE],
+            [CALLBACK_ONLINE_NO, CALLBACK_CHOOSE_OFFLINE],
+        ]
     ]
 
     await ctx.bot.send_message(
         id,
-        text="Готов ли ты к встречам онлайн?\n\n"
-        "Если ты готов к онлайну, то учти, что тебе может попасться пир из твоего кампуса, "
-        "который выбрал исключительно оффлайн, если он был последним нечетным пиром из этой группы. "
-        "В остальных случах тебе будут выбираться пиры случайным образом – "
-        "как из твоего кампуса, так и из других.\n\n"
-        "Если ты не готов к онлайну и хочешь только оффлайн, "
-        "то тебе будет матчить только таких же неготовых в онлайну пиров из твоего кампуса. "
-        "Исключение – когда ты остался последним нечетным пиром из своей группы. "
-        "В таком случае система попытается найти тебе пира твоего кампуса, что выбирал как онлайн, так и оффлайн.",
+        text="Онлайн или оффлайн?\n\n"
+        "Учти, что последний пир без пары из оффлайна, если таковой будет, будет сматчен с пиром из онлайна. "
+        "Последний пир без из онлайна, если таковой будет, так и останется таковым.",
         reply_markup=telegram.InlineKeyboardMarkup(kbd),
     )
 
@@ -85,16 +70,14 @@ async def settings_choose_active(ctx: telegram_ext.CallbackContext, id: int) -> 
     kbd = [
         [
             telegram.InlineKeyboardButton(
-                get_active_status(CALLBACK_ACTIVE_YES),
-                callback_data=CALLBACK_CHOOSE_ACTIVE,
+                get_active_status(active_slug),
+                callback_data=callback_data,
             ),
-        ],
-        [
-            telegram.InlineKeyboardButton(
-                get_active_status(CALLBACK_ACTIVE_NO),
-                callback_data=CALLBACK_CHOOSE_INACTIVE,
-            ),
-        ],
+        ]
+        for [active_slug, callback_data] in [
+            [CALLBACK_ACTIVE_YES, CALLBACK_CHOOSE_ACTIVE],
+            [CALLBACK_ACTIVE_NO, CALLBACK_CHOOSE_INACTIVE],
+        ]
     ]
 
     await ctx.bot.send_message(
@@ -116,9 +99,7 @@ async def handler_command_settings(
     upd: telegram.Update, ctx: telegram_ext.CallbackContext
 ) -> None:
     if not ctx.user_data.get(KEY_AUTHORIZED, False):
-        await ctx.bot.send_message(
-            upd.effective_user.id, text=COMMAND_DENIED_NOT_AUTHORIZED
-        )
+        await upd.message.reply_text(COMMAND_DENIED_NOT_AUTHORIZED)
         return
 
     await settings_choose_campus(ctx, upd.effective_user.id)
