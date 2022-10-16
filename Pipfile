@@ -13,6 +13,7 @@ requests = "*"
 jsbeautifier = "*"
 requests-oauthlib = "*"
 pytz = "*"
+pyyaml = "*"
 
 [requires]
 python_version = "3.9"
