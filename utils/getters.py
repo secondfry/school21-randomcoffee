@@ -19,7 +19,7 @@ def get_campus_name(slug: str) -> str:
     return {
         CALLBACK_CAMPUS_KAZAN: "Казань",
         CALLBACK_CAMPUS_MOSCOW: "Москва",
-        CALLBACK_CAMPUS_NOVOSIBIRSK: "Новосибирск"
+        CALLBACK_CAMPUS_NOVOSIBIRSK: "Новосибирск",
     }.get(slug, "???")
 
 
