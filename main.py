@@ -52,7 +52,9 @@ def main():
         hour=10, minute=0, second=0
     )
     moment += timedelta(days=(WEEKDAY_WEDNESDAY - moment.weekday()) % 7)
-    app.job_queue.run_repeating(perform_rematch, interval=timedelta(days=7), first=moment)
+    app.job_queue.run_repeating(
+        perform_rematch, interval=timedelta(days=7), first=moment
+    )
 
     # FIXME(secondfry):
     # migrate(app.user_data)
