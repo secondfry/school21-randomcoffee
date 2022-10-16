@@ -75,7 +75,7 @@ async def prepare_users_for_rematch(ctx: telegram_ext.CallbackContext):
             err="Can't send inactivity notification.",
             text="К сожалению, ты не подтвердил встречу... "
             "Автоматически выставляю тебе статус inactive.\n"
-            "Ждем тебя, когда вновь появится время на случайный кофе!",
+            "/active вернет тебя в список активных пиров, ждем тебя, когда вновь появится время на случайный кофе!",
         )
         await safe_message(
             ctx,

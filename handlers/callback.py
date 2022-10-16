@@ -34,6 +34,10 @@ def make_accepted_keyboard(text: str) -> list[list[telegram.InlineKeyboardButton
     return [[telegram.InlineKeyboardButton("✅ {}".format(text), callback_data="none")]]
 
 
+def make_rejected_keyboard(text: str) -> list[list[telegram.InlineKeyboardButton]]:
+    return [[telegram.InlineKeyboardButton("❌ {}".format(text), callback_data="none")]]
+
+
 async def set_campus(
     upd: telegram.Update, ctx: telegram_ext.CallbackContext, campus: str
 ):
@@ -71,12 +75,12 @@ async def set_active(
 
 
 async def set_accepted(upd: telegram.Update, ctx: telegram_ext.CallbackContext):
-    if not ctx.user_data.get(KEY_MATCH_WITH, None):
-        await upd.callback_query.edit_message_reply_markup()
-        return
+    if ctx.user_data.get(KEY_MATCH_WITH, None):
+        ctx.user_data[KEY_MATCH_ACCEPTED] = True
+        kbd = make_accepted_keyboard(get_accepted())
+    else:
+        kbd = make_rejected_keyboard(get_accepted())
 
-    ctx.user_data[KEY_MATCH_ACCEPTED] = True
-    kbd = make_accepted_keyboard(get_accepted())
     await upd.callback_query.edit_message_reply_markup(
         telegram.InlineKeyboardMarkup(kbd)
     )
