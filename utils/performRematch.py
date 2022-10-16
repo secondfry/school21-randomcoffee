@@ -11,12 +11,10 @@ from config.constants import (
 )
 from config.env import ADMIN_IDS
 from handlers.commandDump import perform_dump
-from handlers.error import handle_common_block_errors, send_error
 from telegram import constants as telegram_constants
-from telegram import error as telegram_error
 from telegram import ext as telegram_ext
 
-from utils.performMatch import match_algo
+from utils.performMatch import match_algo, safe_message
 
 
 async def prepare_users_for_rematch(ctx: telegram_ext.CallbackContext):
@@ -48,33 +46,17 @@ async def prepare_users_for_rematch(ctx: telegram_ext.CallbackContext):
             bdata[KEY_MATCH_ACCEPTED] = False
             bdata[KEY_MATCH_NOTIFIED] = False
             bdata[KEY_MATCH_WITH] = None
-            try:
-                await ctx.bot.send_message(
-                    bid,
-                    text="К сожалению, твой пир на случайный кофе не подтвердил встречу...\n"
-                    "Ищем нового!",
-                )
-            except telegram_error.TelegramError as ex:
-                if not handle_common_block_errors(ctx, bid, ex):
-                    await send_error(
-                        ctx,
-                        bid,
-                        bdata[KEY_TELEGRAM_USERNAME],
-                        bdata[KEY_USER_ID],
-                        "Can't send apology.",
-                        ex,
-                    )
-            except Exception as ex:
-                await send_error(
-                    ctx,
-                    bid,
-                    bdata[KEY_TELEGRAM_USERNAME],
-                    bdata[KEY_USER_ID],
-                    "Can't send apology.",
-                    ex,
-                )
-            await ctx.bot.send_message(
+            await safe_message(
+                ctx,
+                bid,
+                err="Can't send apology.",
+                text="К сожалению, твой пир на случайный кофе не подтвердил встречу...\n"
+                "Ищем нового!",
+            )
+            await safe_message(
+                ctx,
                 ADMIN_IDS[0],
+                err="Can't send apology notice to admin.",
                 text="`[t#{0:<10}] {2:<8}` @{1} <= apology".format(
                     bid,
                     bdata.get(KEY_TELEGRAM_USERNAME, "???").replace("_", "\\_"),
@@ -87,34 +69,18 @@ async def prepare_users_for_rematch(ctx: telegram_ext.CallbackContext):
         udata[KEY_MATCH_ACCEPTED] = False
         udata[KEY_MATCH_NOTIFIED] = False
         udata[KEY_MATCH_WITH] = None
-        try:
-            await ctx.bot.send_message(
-                uid,
-                text="К сожалению, ты не подтвердил встречу... "
-                "Автоматически выставляю тебе статус inactive.\n"
-                "Ждем тебя, когда вновь появится время на случайный кофе!",
-            )
-        except telegram_error.TelegramError as ex:
-            if not handle_common_block_errors(ctx, uid, ex):
-                await send_error(
-                    ctx,
-                    uid,
-                    udata[KEY_TELEGRAM_USERNAME],
-                    udata[KEY_USER_ID],
-                    "Can't send inactivity notification.",
-                    ex,
-                )
-        except Exception as ex:
-            await send_error(
-                ctx,
-                uid,
-                udata[KEY_TELEGRAM_USERNAME],
-                udata[KEY_USER_ID],
-                "Can't send inactivity notification.",
-                ex,
-            )
-        await ctx.bot.send_message(
+        await safe_message(
+            ctx,
+            uid,
+            err="Can't send inactivity notification.",
+            text="К сожалению, ты не подтвердил встречу... "
+            "Автоматически выставляю тебе статус inactive.\n"
+            "Ждем тебя, когда вновь появится время на случайный кофе!",
+        )
+        await safe_message(
+            ctx,
             ADMIN_IDS[0],
+            err="Can't send inactivity notification to admin.",
             text="`[t#{0:<10}] {2:<8}` @{1} <= inactive".format(
                 uid,
                 udata.get(KEY_TELEGRAM_USERNAME, "???").replace("_", "\\_"),
