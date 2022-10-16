@@ -8,10 +8,8 @@ async def handler_command_stop(
     upd: telegram.Update, ctx: telegram_ext.CallbackContext
 ) -> None:
     if not ctx.user_data.get(KEY_AUTHORIZED, False):
-        await ctx.bot.send_message(
-            upd.effective_user.id, text=COMMAND_DENIED_NOT_AUTHORIZED
-        )
+        await upd.message.reply_text(COMMAND_DENIED_NOT_AUTHORIZED)
         return
 
     ctx.user_data.clear()
-    await ctx.bot.send_message(upd.effective_user.id, text="До новых встреч!")
+    await upd.message.reply_text("До новых встреч!")
