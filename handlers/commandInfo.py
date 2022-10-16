@@ -3,9 +3,12 @@ from typing import Any, Dict
 import telegram
 from config.constants import (
     KEY_AUTHORIZED,
+    KEY_OAUTH_STATE,
+    KEY_OAUTH_TOKEN,
     KEY_SETTINGS_ACTIVE,
     KEY_SETTINGS_CAMPUS,
     KEY_SETTINGS_ONLINE,
+    KEY_TELEGRAM_ID,
     KEY_TELEGRAM_USERNAME,
     KEY_USER_CAMPUS,
     KEY_USER_ID,
@@ -18,16 +21,15 @@ from utils.lang import COMMAND_DENIED_NOT_AUTHORIZED
 
 def info(data: Dict[str, Any], is_admin_request: bool = False) -> str:
     if is_admin_request:
-        fields = list(data.keys())
+        fields = [x for x in list(data.keys()) if x not in [KEY_OAUTH_STATE, KEY_OAUTH_TOKEN]]
         fields.sort()
     else:
         fields = [
-            KEY_USER_ID,
-            KEY_USER_CAMPUS,
+            KEY_SETTINGS_ACTIVE,
             KEY_SETTINGS_CAMPUS,
             KEY_SETTINGS_ONLINE,
-            KEY_SETTINGS_ACTIVE,
             KEY_TELEGRAM_USERNAME,
+            KEY_USER_ID,
         ]
 
     return "\n".join(["{}: {}".format(x, data.get(x, "???")) for x in fields])
@@ -55,7 +57,7 @@ async def info_other(upd: telegram.Update, ctx: telegram_ext.CallbackContext) ->
 
     message = info(user, is_admin_request=True)
     await upd.message.reply_text(
-        "```\ntelegram.id: {}\n{}\n```".format(uid, message),
+        "```\n{}```".format(message),
         parse_mode=telegram_constants.ParseMode.MARKDOWN,
     )
 

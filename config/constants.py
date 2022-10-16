@@ -1,21 +1,31 @@
 import re
 
-VERSION = 2
+VERSION = 3
 
 AUTH_DATA_REGEXP = re.compile("[0-9a-f]{40}[0-9A-Za-z]{24}")
 
 KEY_AUTHORIZED = "authorized"
+KEY_MATCH_ACCEPTED = "match.accepted"
+KEY_MATCH_NOTIFIED = "match.notified"
+KEY_MATCH_WITH = "match.with"
 KEY_OAUTH_STATE = "oauth.state"
 KEY_OAUTH_TOKEN = "oauth.token"
+KEY_SETTINGS_ACTIVE = "settings.active"
+KEY_SETTINGS_CAMPUS = "settings.campus"
+KEY_SETTINGS_ONLINE = "settings.online"
+KEY_TELEGRAM_ID = "telegram.id"
 KEY_TELEGRAM_USERNAME = "telegram.username"
-KEY_USER_ID = "user.id"
 KEY_USER_CAMPUS = "user.campus"
+KEY_USER_ID = "user.id"
 KEY_VERSION = "version"
 
-CALLBACK_ACTION_SETTING = "settings"
+WEEKDAY_TUESDAY = 1
+WEEKDAY_WEDNESDAY = 2
 
-KEY_SETTINGS_CAMPUS = "settings.campus"
-USER_DATA_CAMPUS = "campus"
+# Callbacks
+## Settings
+CALLBACK_ACTION_SETTING = "settings"
+### Campus
 CALLBACK_STEP_CAMPUS = "campus"
 CALLBACK_CAMPUS_KAZAN = "kazan"
 CALLBACK_CAMPUS_MOSCOW = "moscow"
@@ -29,9 +39,7 @@ CALLBACK_CHOOSE_MOSCOW = "-".join(
 CALLBACK_CHOOSE_NOVOSIBIRSK = "-".join(
     [CALLBACK_ACTION_SETTING, CALLBACK_STEP_CAMPUS, CALLBACK_CAMPUS_NOVOSIBIRSK]
 )
-
-KEY_SETTINGS_ONLINE = "settings.online"
-USER_DATA_ONLINE = "online"
+### Online
 CALLBACK_STEP_ONLINE = "online"
 CALLBACK_ONLINE_YES = "yes"
 CALLBACK_ONLINE_NO = "no"
@@ -41,9 +49,7 @@ CALLBACK_CHOOSE_ONLINE = "-".join(
 CALLBACK_CHOOSE_OFFLINE = "-".join(
     [CALLBACK_ACTION_SETTING, CALLBACK_STEP_ONLINE, CALLBACK_ONLINE_NO]
 )
-
-KEY_SETTINGS_ACTIVE = "settings.active"
-USER_DATA_ACTIVE = "active"
+### Active
 CALLBACK_STEP_ACTIVE = "active"
 CALLBACK_ACTIVE_YES = "yes"
 CALLBACK_ACTIVE_NO = "no"
@@ -53,23 +59,10 @@ CALLBACK_CHOOSE_ACTIVE = "-".join(
 CALLBACK_CHOOSE_INACTIVE = "-".join(
     [CALLBACK_ACTION_SETTING, CALLBACK_STEP_ACTIVE, CALLBACK_ACTIVE_NO]
 )
-
-KEY_MATCH_ACCEPTED = "match.accepted"
-USER_DATA_ACCEPTED = "accepted"
+## Match
 CALLBACK_ACTION_MATCH = "match"
+### Accept
 CALLBACK_STEP_ACCEPT = "accept"
 CALLBACK_CHOOSE_MATCH = "-".join(
     [CALLBACK_ACTION_MATCH, CALLBACK_STEP_ACCEPT]
 )
-
-KEY_MATCH_WITH = "match.with"
-USER_DATA_MATCHED_WITH = "matched_with"
-
-KEY_MATCH_NOTIFIED = "match.notified"
-
-WEEKDAY_TUESDAY = 1
-WEEKDAY_WEDNESDAY = 2
-
-USER_DATA_TOKEN_SUCCESS = "intra_token_success"
-USER_DATA_LOGIN = "intra_login"
-USER_DATA_TELEGRAM_USERNAME = "telegram_username"
