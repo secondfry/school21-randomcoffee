@@ -3,27 +3,11 @@ import os
 from typing import Dict
 
 from config.constants import (
-    KEY_AUTHORIZED,
-    KEY_MATCH_ACCEPTED,
-    KEY_MATCH_WITH,
-    KEY_OAUTH_TOKEN,
-    KEY_SETTINGS_ACTIVE,
-    KEY_SETTINGS_CAMPUS,
-    KEY_SETTINGS_ONLINE,
-    KEY_TELEGRAM_USERNAME,
-    KEY_USER_CAMPUS,
-    KEY_USER_ID,
+    KEY_TELEGRAM_ID,
     KEY_VERSION,
-    USER_DATA_ACCEPTED,
-    USER_DATA_ACTIVE,
-    USER_DATA_CAMPUS,
-    USER_DATA_LOGIN,
-    USER_DATA_MATCHED_WITH,
-    USER_DATA_ONLINE,
-    USER_DATA_TELEGRAM_USERNAME,
-    USER_DATA_TOKEN_SUCCESS,
 )
 from typings import TokenUser
+from telegram import ext as telegram_ext
 
 from utils.getters import get_primary_campus
 
@@ -44,44 +28,15 @@ def get_campus_from_data_cache(intra_login: str) -> str:
     return campus if campus else "???"
 
 
-def migrate_from_0_to_1(data: Dict):
-    data[KEY_VERSION] = 1
+def migrate_from_2_to_3(data: Dict, uid: int):
+    data[KEY_VERSION] = 3
 
-    if USER_DATA_LOGIN in data:
-        intra_login = data[USER_DATA_LOGIN]
-        data[KEY_AUTHORIZED] = True
-        data[KEY_USER_ID] = intra_login
-        data[KEY_USER_CAMPUS] = get_campus_from_data_cache(intra_login)
-
-    if USER_DATA_TOKEN_SUCCESS in data:
-        data[KEY_OAUTH_TOKEN] = data[USER_DATA_TOKEN_SUCCESS]
-
-    if USER_DATA_TELEGRAM_USERNAME in data:
-        username = data[USER_DATA_TELEGRAM_USERNAME]
-        if username:
-            data[KEY_TELEGRAM_USERNAME] = username
-        else:
-            data[KEY_TELEGRAM_USERNAME] = "???"
-    else:
-        data[KEY_TELEGRAM_USERNAME] = "???"
-
-    if USER_DATA_CAMPUS in data:
-        data[KEY_SETTINGS_CAMPUS] = data[USER_DATA_CAMPUS]
-
-    if USER_DATA_ONLINE in data:
-        data[KEY_SETTINGS_ONLINE] = data[USER_DATA_ONLINE]
-
-    if USER_DATA_ACTIVE in data:
-        data[KEY_SETTINGS_ACTIVE] = data[USER_DATA_ACTIVE]
-
-    if USER_DATA_ACCEPTED in data:
-        data[KEY_MATCH_ACCEPTED] = data[USER_DATA_ACCEPTED]
-
-    if USER_DATA_MATCHED_WITH in data:
-        data[KEY_MATCH_WITH] = data[USER_DATA_MATCHED_WITH]
+    if KEY_TELEGRAM_ID not in data:
+        data[KEY_TELEGRAM_ID] = uid
 
 
-def migrate(user_data: Dict[int, Dict[object, object]]) -> None:
+async def migrate(ctx: telegram_ext.CallbackContext) -> None:
+    user_data = ctx.application.user_data
     for uid, data in user_data.items():
-        if data.get(KEY_VERSION, 0) < 1:
-            migrate_from_0_to_1(data)
+        if data.get(KEY_VERSION, 0) < 3:
+            migrate_from_2_to_3(data, uid)

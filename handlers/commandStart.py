@@ -6,6 +6,7 @@ from config.constants import (
     KEY_AUTHORIZED,
     KEY_OAUTH_STATE,
     KEY_OAUTH_TOKEN,
+    KEY_TELEGRAM_ID,
     KEY_TELEGRAM_USERNAME,
     KEY_USER_ID,
 )
@@ -104,7 +105,7 @@ async def do_auth(
     ctx.user_data[KEY_AUTHORIZED] = True
     ctx.user_data[KEY_USER_ID] = token_user["user_id"]
 
-    await upd.message.reply_text("Привет, {}".format(token_user["login"]))
+    await upd.message.reply_text("Привет, {}".format(token_user["user_id"]))
     await settings_choose_campus(ctx, upd.effective_user.id)
 
 
@@ -122,8 +123,10 @@ async def do_greet(upd: telegram.Update, ctx: telegram_ext.CallbackContext) -> N
     ]
 
     ctx.user_data[KEY_AUTHORIZED] = False
+    uid = upd.effective_chat.id
     username = upd.effective_chat.username
     ctx.user_data[KEY_TELEGRAM_USERNAME] = username if username else "???"
+    ctx.user_data[KEY_TELEGRAM_ID] = uid
     await upd.message.reply_text(
         COMMAND_START_NOT_AUTHORIZED.format(authorization_url),
         reply_markup=telegram.InlineKeyboardMarkup(kbd),

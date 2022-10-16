@@ -56,8 +56,8 @@ def main():
         perform_rematch, interval=timedelta(days=7), first=moment
     )
 
-    # FIXME(secondfry):
-    # migrate(app.user_data)
+    # Migrations
+    app.job_queue.run_once(migrate, when=0)
 
     # Handlers
     app.add_handler(telegram_ext.CommandHandler("start", handler_command_start))
