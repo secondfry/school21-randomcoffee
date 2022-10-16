@@ -20,7 +20,7 @@ from config.constants import (
     KEY_TELEGRAM_USERNAME,
     KEY_USER_ID,
 )
-from config.env import ADMIN_IDS
+from config.env import ADMIN_IDS, SAVIOUR_ID
 from handlers.commandDump import perform_dump
 from handlers.error import handle_common_block_errors, send_error
 from telegram import error as telegram_error
@@ -125,6 +125,15 @@ def find_peer_from_campus(
     return None
 
 
+async def no_coffee(ctx: telegram_ext.CallbackContext, uid: int):
+    await safe_message(
+        ctx,
+        uid,
+        err="Can't send apology to peer left without pair.",
+        text="Волей судьбы ты остался сегодня без пары на случайный кофе.",
+    )
+
+
 async def match_algo(ctx: telegram_ext.CallbackContext):
     buckets: Dict[str, Deque[int]] = {
         CALLBACK_CAMPUS_KAZAN: deque(),
@@ -189,6 +198,7 @@ async def match_algo(ctx: telegram_ext.CallbackContext):
             )
 
             if not bid:
+                await no_coffee(ctx, aid)
                 continue
 
             async def job(ctx: telegram_ext.CallbackContext):
@@ -196,11 +206,19 @@ async def match_algo(ctx: telegram_ext.CallbackContext):
 
             ctx.application.job_queue.run_once(job, when=0)
 
-        # TODO reimplement saviour mechanic
-        # if bucket == 'online':
-        #     a = uids.pop()
-        #     b = SAVIOUR_ID
-        #     match(ctx, a, b, logins.get(a), logins.get(b), handles.get(a), handles.get(b))
+        if bucket == "online":
+            aid = uids.pop()
+
+            if True:
+                await no_coffee(ctx, aid)
+            else:
+                # TODO reimplement saviour mechanic
+                bid = SAVIOUR_ID
+
+                async def job(ctx: telegram_ext.CallbackContext):
+                    await match(ctx, aid, bid)
+
+                ctx.application.job_queue.run_once(job, when=0)
 
     buckets.clear()
     user_campuses.clear()
