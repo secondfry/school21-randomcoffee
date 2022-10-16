@@ -10,6 +10,7 @@ from config.constants import (
     CALLBACK_CAMPUS_KAZAN,
     CALLBACK_CAMPUS_MOSCOW,
     CALLBACK_CAMPUS_NOVOSIBIRSK,
+    CALLBACK_CHOOSE_MATCH,
     KEY_AUTHORIZED,
     KEY_MATCH_ACCEPTED,
     KEY_MATCH_NOTIFIED,
@@ -77,7 +78,7 @@ async def send_match_message(
     kbd = [
         [
             telegram.InlineKeyboardButton(
-                "Подтвердить встречу", callback_data="match-accept"
+                "Подтвердить встречу", callback_data=CALLBACK_CHOOSE_MATCH
             )
         ]
     ]
