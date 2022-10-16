@@ -25,8 +25,8 @@ def get_campus_name(slug: str) -> str:
 
 def get_online_status(slug: str) -> str:
     return {
-        CALLBACK_ONLINE_YES: "Готов как к онлайну, так и к оффлайну",
-        CALLBACK_ONLINE_NO: "Хочу только оффлайн",
+        CALLBACK_ONLINE_YES: "Хочу онлайн",
+        CALLBACK_ONLINE_NO: "Хочу оффлайн",
     }.get(slug, "???")
 
 
