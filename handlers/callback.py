@@ -72,6 +72,7 @@ async def set_active(
 
 async def set_accepted(upd: telegram.Update, ctx: telegram_ext.CallbackContext):
     if not ctx.user_data.get(KEY_MATCH_WITH, None):
+        await upd.callback_query.edit_message_reply_markup()
         return
 
     ctx.user_data[KEY_MATCH_ACCEPTED] = True
