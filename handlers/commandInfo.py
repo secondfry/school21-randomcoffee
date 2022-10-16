@@ -8,9 +8,7 @@ from config.constants import (
     KEY_SETTINGS_ACTIVE,
     KEY_SETTINGS_CAMPUS,
     KEY_SETTINGS_ONLINE,
-    KEY_TELEGRAM_ID,
     KEY_TELEGRAM_USERNAME,
-    KEY_USER_CAMPUS,
     KEY_USER_ID,
 )
 from config.env import ADMIN_IDS
@@ -21,7 +19,9 @@ from utils.lang import COMMAND_DENIED_NOT_AUTHORIZED
 
 def info(data: Dict[str, Any], is_admin_request: bool = False) -> str:
     if is_admin_request:
-        fields = [x for x in list(data.keys()) if x not in [KEY_OAUTH_STATE, KEY_OAUTH_TOKEN]]
+        fields = [
+            x for x in list(data.keys()) if x not in [KEY_OAUTH_STATE, KEY_OAUTH_TOKEN]
+        ]
         fields.sort()
     else:
         fields = [

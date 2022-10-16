@@ -11,13 +11,11 @@ from config.constants import (
 )
 from config.env import ADMIN_IDS
 from telegram import constants as telegram_constants
-from telegram import error as telegram_error
 from telegram import ext as telegram_ext
 from utils.getters import get_accepted_sign
-from utils.performMatch import send_match_message
+from utils.performMatch import safe_message, send_match_message
 
 from handlers.commandDump import chunks
-from handlers.error import handle_common_block_errors, send_error
 
 
 async def handler_command_forcenotify(
@@ -68,32 +66,14 @@ async def handler_command_forcenotify(
                 get_accepted_sign(udata),
             )
         )
-        try:
-            await ctx.bot.send_message(
-                uid,
-                text="Ой-ой-ой, я запутался кому отправлял уведомления, а кому нет. Не серчай!\n"
-                "P.S. Если получение матча не подтвердить, "
-                "то бот автоматически сделает тебя неактивным.",
-            )
-        except telegram_error.TelegramError as ex:
-            if not handle_common_block_errors(ctx, uid, ex):
-                await send_error(
-                    ctx,
-                    uid,
-                    udata[KEY_TELEGRAM_USERNAME],
-                    udata[KEY_USER_ID],
-                    "Can't send force active message.",
-                    ex,
-                )
-        except Exception as ex:
-            await send_error(
-                ctx,
-                uid,
-                udata[KEY_TELEGRAM_USERNAME],
-                udata[KEY_USER_ID],
-                "Can't send force active message.",
-                ex,
-            )
+        await safe_message(
+            ctx,
+            uid,
+            err="Can't send force active message.",
+            text="Ой-ой-ой, я запутался кому отправлял уведомления, а кому нет. Не серчай!\n"
+            "P.S. Если получение матча не подтвердить, "
+            "то бот автоматически сделает тебя неактивным.",
+        )
         await send_match_message(
             ctx,
             uid,

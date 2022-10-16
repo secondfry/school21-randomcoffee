@@ -53,7 +53,7 @@ async def check_if_auth_data(
 
     code = auth_data[:40]
     state = auth_data[40:]
-    if ENV == "production" and state != ctx.user_data.get(KEY_OAUTH_STATE, ''):
+    if ENV == "production" and state != ctx.user_data.get(KEY_OAUTH_STATE, ""):
         await upd.message.reply_text(
             "С момента начала авторизации у тебя изменился OAuth state.\n"
             "Пройди авторизацию повторно, используя следующее сообщение."

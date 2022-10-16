@@ -36,7 +36,7 @@ async def safe_message(
     err: Optional[str] = None,
     cb: Callable = None,
     *args,
-    **kwargs
+    **kwargs,
 ):
     try:
         await ctx.bot.send_message(uid, *args, **kwargs)
@@ -98,19 +98,19 @@ async def send_match_message(
     )
 
 
-async def match(
-    ctx: telegram_ext.CallbackContext,
-    aid: int,
-    bid: int,
-    alogin: str,
-    blogin: str,
-    ahandle: str,
-    bhandle: str,
-) -> None:
-    ctx.application.user_data[aid][KEY_MATCH_WITH] = bid
-    ctx.application.user_data[bid][KEY_MATCH_WITH] = aid
-    await send_match_message(ctx, aid, blogin, bhandle)
-    await send_match_message(ctx, bid, alogin, ahandle)
+async def match(ctx: telegram_ext.CallbackContext, aid: int, bid: int) -> None:
+    adata = ctx.application.user_data[aid]
+    adata[KEY_MATCH_WITH] = bid
+    alogin = adata[KEY_USER_ID]
+    atelegram = adata[KEY_TELEGRAM_USERNAME]
+
+    bdata = ctx.application.user_data[bid]
+    bdata[KEY_MATCH_WITH] = aid
+    blogin = bdata[KEY_USER_ID]
+    atelegram = bdata[KEY_TELEGRAM_USERNAME]
+
+    await send_match_message(ctx, aid, blogin, atelegram)
+    await send_match_message(ctx, bid, alogin, atelegram)
 
 
 def find_peer_from_campus(
@@ -134,8 +134,6 @@ async def match_algo(ctx: telegram_ext.CallbackContext):
         "???": deque(),
     }
     user_campuses = {}
-    user_handles = {}
-    user_logins = {}
 
     for uid, udata in ctx.application.user_data.items():
         if not udata.get(KEY_AUTHORIZED, False):
@@ -154,12 +152,6 @@ async def match_algo(ctx: telegram_ext.CallbackContext):
 
         bucket = get_bucket(udata)
 
-        handle = udata.get(KEY_TELEGRAM_USERNAME, "???")
-        user_handles[uid] = handle
-
-        login = udata.get(KEY_USER_ID, "???")
-        user_logins[uid] = login
-
         campus = udata.get(KEY_SETTINGS_CAMPUS, "???")
         user_campuses[uid] = campus
 
@@ -174,46 +166,35 @@ async def match_algo(ctx: telegram_ext.CallbackContext):
                 await safe_message(
                     ctx,
                     ADMIN_IDS[0],
-                    text="For some reason ??? bucket has #{} accounts in it".format(
-                        len(uids)
-                    ),
+                    text=f"For some reason ??? bucket has #{len(uids)} accounts in it",
                 )
             continue
 
         while len(uids) > 1:
-            a = uids.pop()
-            b = uids.pop()
-            await match(
-                ctx,
-                a,
-                b,
-                user_logins.get(a),
-                user_logins.get(b),
-                user_handles.get(a),
-                user_handles.get(b),
-            )
+            aid = uids.pop()
+            bid = uids.pop()
+
+            async def job(ctx: telegram_ext.CallbackContext):
+                await match(ctx, aid, bid)
+
+            ctx.application.job_queue.run_once(job, when=0)
 
         if not uids:
             continue
 
         if bucket != "online":
-            a = uids.pop()
-            b = find_peer_from_campus(
-                buckets["online"], user_campuses, user_campuses[a]
+            aid = uids.pop()
+            bid = find_peer_from_campus(
+                buckets["online"], user_campuses, user_campuses[aid]
             )
 
-            if not b:
+            if not bid:
                 continue
 
-            await match(
-                ctx,
-                a,
-                b,
-                user_logins.get(a),
-                user_logins.get(b),
-                user_handles.get(a),
-                user_handles.get(b),
-            )
+            async def job(ctx: telegram_ext.CallbackContext):
+                await match(ctx, aid, bid)
+
+            ctx.application.job_queue.run_once(job, when=0)
 
         # TODO reimplement saviour mechanic
         # if bucket == 'online':
@@ -223,8 +204,6 @@ async def match_algo(ctx: telegram_ext.CallbackContext):
 
     buckets.clear()
     user_campuses.clear()
-    user_handles.clear()
-    user_logins.clear()
 
 
 async def perform_match(ctx: telegram_ext.CallbackContext) -> None:

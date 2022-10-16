@@ -2,9 +2,9 @@ import logging
 import os
 import pprint
 import sys
+import traceback
 from types import TracebackType
 from typing import Optional, Union
-import traceback
 
 import telegram
 import yaml
